@@ -1,0 +1,52 @@
+@model CollectionAttachmentsViewModel
+@{
+    ViewData["Title"] = "Proof of Payment";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0">Proof of Payment</h4>
+        <div class="text-secondary">@Model.PharmacyName &mdash; @Model.Amount.ToString("C") on @Model.CollectionDateUtc.ToString("yyyy-MM-dd HH:mm")</div>
+    </div>
+    <a asp-action="Index" asp-route-representativeId="@Model.RepresentativeId" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Collections</a>
+</div>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>File</th><th>Type</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var a in Model.Attachments)
+                {
+                    <tr>
+                        <td>@a.FileName</td>
+                        <td>@a.ContentType</td>
+                        <td>@(Math.Round(a.SizeBytes / 1024.0, 1)) KB</td>
+                        <td>@a.UploadedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><a asp-action="DownloadAttachment" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i> Download</a></td>
+                    </tr>
+                }
+                @if (Model.Attachments.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-3">No attachments yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h6 class="card-title">Upload Proof of Payment</h6>
+        <form asp-action="AddAttachment" method="post" enctype="multipart/form-data" class="row g-2">
+            <input type="hidden" name="collectionId" value="@Model.CollectionId" />
+            <div class="col-md-8">
+                <input type="file" name="attachment" class="form-control" accept="image/jpeg,image/png,application/pdf" required />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload"></i> Upload</button>
+            </div>
+            <div class="col-12 text-secondary small">Cash receipt, cheque image, or bank transfer confirmation — JPEG, PNG, or PDF, up to 5 MB.</div>
+        </form>
+    </div>
+</div>

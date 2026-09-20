@@ -1,0 +1,36 @@
+@model VisitPlanCreateViewModel
+@{
+    ViewData["Title"] = "New Visit Plan";
+}
+
+<h4 class="mb-3">New Visit Plan</h4>
+<div class="card"><div class="card-body">
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="RepresentativeId" class="form-label"></label>
+                <select asp-for="RepresentativeId" asp-items="Model.Representatives" class="form-select">
+                    <option value="">-- select representative --</option>
+                </select>
+                <span asp-validation-for="RepresentativeId" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="PeriodType" class="form-label"></label>
+                <select asp-for="PeriodType" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.VisitPlanPeriodType>()" class="form-select"></select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="StartDate" class="form-label"></label>
+                <input asp-for="StartDate" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EndDate" class="form-label"></label>
+                <input asp-for="EndDate" class="form-control" />
+            </div>
+        </div>
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Create Draft</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div></div>

@@ -1,0 +1,11 @@
+F:\Projects\PharmaERP\src\Shared\bin\Debug\net10.0\PharmaERP.Shared.deps.json
+F:\Projects\PharmaERP\src\Shared\bin\Debug\net10.0\PharmaERP.Shared.dll
+F:\Projects\PharmaERP\src\Shared\bin\Debug\net10.0\PharmaERP.Shared.pdb
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\PharmaERP.Shared.GeneratedMSBuildEditorConfig.editorconfig
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\PharmaERP.Shared.AssemblyInfoInputs.cache
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\PharmaERP.Shared.AssemblyInfo.cs
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\PharmaERP.Shared.csproj.CoreCompileInputs.cache
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\PharmaERP.Shared.dll
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\refint\PharmaERP.Shared.dll
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\PharmaERP.Shared.pdb
+F:\Projects\PharmaERP\src\Shared\obj\Debug\net10.0\ref\PharmaERP.Shared.dll

@@ -1,0 +1,49 @@
+@model IReadOnlyList<StockLevelDto>
+@{
+    ViewData["Title"] = "Stock Levels";
+    var warehouses = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Warehouses;
+    var products = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Products;
+}
+
+<h4 class="mb-3">Stock Levels by Warehouse</h4>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-4">
+                <select name="warehouseId" class="form-select" onchange="this.form.submit()" asp-items="warehouses">
+                    <option value="">-- all warehouses --</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="productId" class="form-select" onchange="this.form.submit()" asp-items="products">
+                    <option value="">-- all products --</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Warehouse</th><th>Product</th><th>Batch</th><th>Expiry</th><th>Quantity</th></tr></thead>
+            <tbody>
+                @foreach (var s in Model)
+                {
+                    <tr>
+                        <td>@s.WarehouseName</td>
+                        <td>@s.ProductName</td>
+                        <td>@s.BatchNumber</td>
+                        <td>@s.ExpiryDate?.ToString("yyyy-MM-dd")</td>
+                        <td class="@(s.Quantity < 0 ? "text-danger fw-semibold" : "")">@s.Quantity</td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-4">No stock recorded yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

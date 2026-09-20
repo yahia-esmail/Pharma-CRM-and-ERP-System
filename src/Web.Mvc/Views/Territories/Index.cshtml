@@ -1,0 +1,58 @@
+@model IReadOnlyList<TerritoryListItemDto>
+@{
+    ViewData["Title"] = "Territories";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Territories</h4>
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+    {
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Add Territory</a>
+    }
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Parent</th>
+                    <th>Region</th>
+                    <th>District Manager</th>
+                    <th>Representatives</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model)
+                {
+                    <tr>
+                        <td>
+                            @for (var i = 0; i < (int)t.Type; i++) { <span class="text-secondary">&nbsp;&nbsp;&nbsp;</span> }
+                            <a asp-action="Details" asp-route-id="@t.Id">@t.Name</a>
+                        </td>
+                        <td><span class="badge bg-secondary status-badge">@t.Type</span></td>
+                        <td>@t.ParentTerritoryName</td>
+                        <td>@t.Region</td>
+                        <td>@t.DistrictManagerName</td>
+                        <td>@t.RepresentativeCount</td>
+                        <td class="text-end">
+                            @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager))
+                            {
+                                <form asp-action="Delete" asp-route-id="@t.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this territory?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-secondary py-4">No territories defined.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

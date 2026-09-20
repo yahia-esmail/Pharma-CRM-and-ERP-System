@@ -1,0 +1,75 @@
+@model PagedResult<OrderListItemDto>
+@{
+    ViewData["Title"] = "Orders";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Orders</h4>
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative))
+    {
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Order</a>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-3">
+                <select name="status" class="form-select" onchange="this.form.submit()" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.OrderStatus>()">
+                    <option value="">-- any status --</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Date</th><th>Pharmacy</th><th>Representative</th><th>Status</th><th>Total</th></tr></thead>
+            <tbody>
+                @foreach (var o in Model.Items)
+                {
+                    <tr style="cursor:pointer;" onclick="location.href='@Url.Action("Details", new { id = o.Id })'">
+                        <td>@o.OrderDateUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@o.PharmacyName</td>
+                        <td>@o.RepresentativeName</td>
+                        <td>
+                            @{
+                                var badgeClass = o.Status switch
+                                {
+                                    PharmaERP.Domain.Enums.OrderStatus.Approved => "bg-info",
+                                    PharmaERP.Domain.Enums.OrderStatus.Delivered => "bg-success",
+                                    PharmaERP.Domain.Enums.OrderStatus.Rejected => "bg-danger",
+                                    PharmaERP.Domain.Enums.OrderStatus.Cancelled => "bg-danger",
+                                    PharmaERP.Domain.Enums.OrderStatus.Submitted => "bg-warning",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @badgeClass status-badge">@o.Status</span>
+                        </td>
+                        <td>@o.TotalAmount.ToString("C")</td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-4">No orders found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { page = p, status = ViewBag.Status })">@p</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

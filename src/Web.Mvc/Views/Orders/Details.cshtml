@@ -1,0 +1,143 @@
+@model OrderDetailsViewModel
+@{
+    ViewData["Title"] = $"Order #{Model.Order.Id}";
+    var order = Model.Order;
+    var editable = order.Status == PharmaERP.Domain.Enums.OrderStatus.Draft;
+    var badgeClass = order.Status switch
+    {
+        PharmaERP.Domain.Enums.OrderStatus.Approved => "bg-info",
+        PharmaERP.Domain.Enums.OrderStatus.Delivered => "bg-success",
+        PharmaERP.Domain.Enums.OrderStatus.Rejected => "bg-danger",
+        PharmaERP.Domain.Enums.OrderStatus.Cancelled => "bg-danger",
+        PharmaERP.Domain.Enums.OrderStatus.Submitted => "bg-warning",
+        _ => "bg-secondary"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h4 class="mb-0">Order #@order.Id &mdash; <a asp-controller="Pharmacies" asp-action="Details" asp-route-id="@order.PharmacyId">@order.PharmacyName</a></h4>
+        <div class="text-secondary">@order.OrderDateUtc.ToString("yyyy-MM-dd HH:mm") &mdash; @order.RepresentativeName</div>
+    </div>
+    <span class="badge @badgeClass status-badge fs-6">@order.Status</span>
+</div>
+
+@if (order.Status == PharmaERP.Domain.Enums.OrderStatus.Rejected && !string.IsNullOrEmpty(order.RejectionReason))
+{
+    <div class="alert alert-danger"><i class="bi bi-x-circle"></i> Rejected: @order.RejectionReason</div>
+}
+
+<div class="d-flex gap-2 mb-3">
+    @if (editable)
+    {
+        <form asp-action="Submit" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Submit this order for approval?');">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Submit for Approval</button>
+        </form>
+        <form asp-action="Cancel" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Cancel this order?');">
+            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i> Cancel Order</button>
+        </form>
+    }
+    else if (order.Status == PharmaERP.Domain.Enums.OrderStatus.Submitted)
+    {
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+        {
+            <form asp-action="Approve" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Approve this order?');">
+                <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Approve</button>
+            </form>
+            <form asp-action="Reject" asp-route-id="@order.Id" method="post" class="d-flex gap-2" onsubmit="return confirm('Reject this order?');">
+                <input type="text" name="reason" class="form-control form-control-sm" placeholder="Rejection reason" required style="width:220px;" />
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i> Reject</button>
+            </form>
+        }
+        <form asp-action="Cancel" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Cancel this order?');">
+            <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-lg"></i> Cancel Order</button>
+        </form>
+    }
+    else if (order.Status == PharmaERP.Domain.Enums.OrderStatus.Approved)
+    {
+        <form asp-action="Deliver" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Mark this order delivered? It will be recorded as a sale and deducted from stock custody.');">
+            <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-truck"></i> Mark Delivered</button>
+        </form>
+    }
+    else if (order.SaleId is not null)
+    {
+        <div class="alert alert-success d-flex justify-content-between align-items-center mb-0 flex-grow-1">
+            <span><i class="bi bi-receipt"></i> Recorded as Sale #@order.SaleId.</span>
+            @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+            {
+                <a asp-controller="Trace" asp-action="Sale" asp-route-id="@order.SaleId" class="btn btn-sm btn-outline-success"><i class="bi bi-diagram-3"></i> Trace This Transaction</a>
+            }
+        </div>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Product</th><th>Qty</th><th>Bonus</th><th>Unit Price</th><th>Discount</th><th>Line Total</th>@if (editable) {<th></th>}</tr></thead>
+            <tbody>
+                @foreach (var line in order.Lines)
+                {
+                    <tr>
+                        <td>@line.ProductName</td>
+                        <td>@line.Quantity</td>
+                        <td>@(line.BonusQuantity > 0 ? line.BonusQuantity.ToString() : "")</td>
+                        <td>@line.UnitPrice.ToString("C")</td>
+                        <td>@line.DiscountPercent%</td>
+                        <td>@line.LineTotal.ToString("C")</td>
+                        @if (editable)
+                        {
+                            <td>
+                                <form asp-action="RemoveLine" method="post" class="d-inline">
+                                    <input type="hidden" name="orderId" value="@order.Id" />
+                                    <input type="hidden" name="lineId" value="@line.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (order.Lines.Count == 0)
+                {
+                    <tr><td colspan="@(editable ? 7 : 6)" class="text-center text-secondary py-3">No lines yet.</td></tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-semibold">
+                    <td colspan="5" class="text-end">Total</td>
+                    <td>@order.TotalAmount.ToString("C")</td>
+                    @if (editable) { <td></td> }
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+@if (editable)
+{
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title">Add Line</h6>
+            <form asp-action="AddLine" method="post" class="row g-2">
+                <input type="hidden" asp-for="NewLine.OrderId" />
+                <div class="col-md-4">
+                    <select asp-for="NewLine.ProductId" asp-items="Model.Products" class="form-select">
+                        <option value="">-- select product --</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input asp-for="NewLine.Quantity" type="number" class="form-control" placeholder="Qty" />
+                </div>
+                <div class="col-md-2">
+                    <input asp-for="NewLine.BonusQuantity" type="number" class="form-control" placeholder="Bonus" />
+                </div>
+                <div class="col-md-2">
+                    <input asp-for="NewLine.DiscountPercent" type="number" class="form-control" placeholder="Discount %" />
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> Add Line</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}

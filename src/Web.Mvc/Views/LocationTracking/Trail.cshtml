@@ -1,0 +1,38 @@
+@model IReadOnlyList<RepresentativeLocationDto>
+@{
+    ViewData["Title"] = "Representative Route";
+    var repName = Model.FirstOrDefault()?.RepresentativeName ?? "Representative";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">@repName &mdash; Route (@ViewBag.Date)</h4>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to map</a>
+</div>
+
+<div id="map" style="height: 520px; border-radius: 8px; border: 1px solid var(--pharma-border);"></div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const points = @Html.Raw(Json.Serialize(Model.Select(l => new { l.Latitude, l.Longitude, l.Source, Time = l.TimestampUtc.ToString("HH:mm") })));
+        const map = L.map('map').setView(points.length ? [points[0].Latitude, points[0].Longitude] : [30.0444, 31.2357], points.length ? 12 : 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const latlngs = points.map(p => [p.Latitude, p.Longitude]);
+        points.forEach(p => {
+            L.circleMarker([p.Latitude, p.Longitude], { radius: 6, color: p.Source === 'VisitCheckIn' ? '#1E9E6B' : '#2F80ED' })
+                .addTo(map)
+                .bindPopup(`${p.Time} &mdash; ${p.Source}`);
+        });
+        if (latlngs.length > 1) {
+            L.polyline(latlngs, { color: '#0B6E6E', weight: 3, opacity: 0.6 }).addTo(map);
+            map.fitBounds(latlngs, { padding: [30, 30] });
+        }
+    </script>
+}

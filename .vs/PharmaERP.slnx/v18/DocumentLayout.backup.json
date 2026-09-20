@@ -1,0 +1,431 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "F:\\Projects\\PharmaERP\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\visitplanscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\visitplanscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\pharmaciescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\pharmaciescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\orderscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\orderscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\locationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\locationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\doctorscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\doctorscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\custodycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\custodycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\collectionscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\collectionscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\controllers\\v1\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\controllers\\v1\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|f:\\projects\\pharmaerp\\src\\web.api\\contracts\\authcontracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0854C399-DEA3-CB86-69F0-6D89652F860A}|src\\Web.Api\\PharmaERP.Web.Api.csproj|solutionrelative:src\\web.api\\contracts\\authcontracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.Notifications.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.CollectionAttachments.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AuditLogs.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AspNetUsers.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AspNetUserLogins.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AspNetRoles.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F30EDD86-FA3D-A42A-A3A8-45A785369522}|src\\Web.Mvc\\PharmaERP.Web.Mvc.csproj|f:\\projects\\pharmaerp\\src\\web.mvc\\views\\account\\login.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{F30EDD86-FA3D-A42A-A3A8-45A785369522}|src\\Web.Mvc\\PharmaERP.Web.Mvc.csproj|solutionrelative:src\\web.mvc\\views\\account\\login.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C16BD65C-1CD7-20F7-7810-BEBCC182C402}|src\\Infrastructure\\PharmaERP.Infrastructure.csproj|f:\\projects\\pharmaerp\\src\\infrastructure\\identity\\identityseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C16BD65C-1CD7-20F7-7810-BEBCC182C402}|src\\Infrastructure\\PharmaERP.Infrastructure.csproj|solutionrelative:src\\infrastructure\\identity\\identityseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C16BD65C-1CD7-20F7-7810-BEBCC182C402}|src\\Infrastructure\\PharmaERP.Infrastructure.csproj|f:\\projects\\pharmaerp\\src\\infrastructure\\identity\\applicationuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C16BD65C-1CD7-20F7-7810-BEBCC182C402}|src\\Infrastructure\\PharmaERP.Infrastructure.csproj|solutionrelative:src\\infrastructure\\identity\\applicationuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C52D740-BE77-3ED6-13EA-D45E101140F9}|src\\Domain\\PharmaERP.Domain.csproj|f:\\projects\\pharmaerp\\src\\domain\\entities\\territory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C52D740-BE77-3ED6-13EA-D45E101140F9}|src\\Domain\\PharmaERP.Domain.csproj|solutionrelative:src\\domain\\entities\\territory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C52D740-BE77-3ED6-13EA-D45E101140F9}|src\\Domain\\PharmaERP.Domain.csproj|f:\\projects\\pharmaerp\\src\\domain\\entities\\auditlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C52D740-BE77-3ED6-13EA-D45E101140F9}|src\\Domain\\PharmaERP.Domain.csproj|solutionrelative:src\\domain\\entities\\auditlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C52D740-BE77-3ED6-13EA-D45E101140F9}|src\\Domain\\PharmaERP.Domain.csproj|f:\\projects\\pharmaerp\\src\\domain\\common\\baseentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C52D740-BE77-3ED6-13EA-D45E101140F9}|src\\Domain\\PharmaERP.Domain.csproj|solutionrelative:src\\domain\\common\\baseentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F30EDD86-FA3D-A42A-A3A8-45A785369522}|src\\Web.Mvc\\PharmaERP.Web.Mvc.csproj|f:\\projects\\pharmaerp\\src\\web.mvc\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F30EDD86-FA3D-A42A-A3A8-45A785369522}|src\\Web.Mvc\\PharmaERP.Web.Mvc.csproj|solutionrelative:src\\web.mvc\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F30EDD86-FA3D-A42A-A3A8-45A785369522}|src\\Web.Mvc\\PharmaERP.Web.Mvc.csproj|f:\\projects\\pharmaerp\\src\\web.mvc\\models\\doctorformviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F30EDD86-FA3D-A42A-A3A8-45A785369522}|src\\Web.Mvc\\PharmaERP.Web.Mvc.csproj|solutionrelative:src\\web.mvc\\models\\doctorformviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 5,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Properties\\launchSettings.json",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Properties\\launchSettings.json",
+              "RelativeToolTip": "src\\Web.Api\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-09-18T21:12:09.028Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "src\\Web.Api\\appsettings.json",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\appsettings.json",
+              "RelativeToolTip": "src\\Web.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-09-18T16:02:19.47Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PharmaciesController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\PharmaciesController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\PharmaciesController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\PharmaciesController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\PharmaciesController.cs",
+              "ViewState": "AgIAADQAAAAAAAAAAAAkwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-19T18:06:46.719Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "LocationController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\LocationController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\LocationController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\LocationController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\LocationController.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T21:12:41.838Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "OrdersController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\OrdersController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\OrdersController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\OrdersController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\OrdersController.cs",
+              "ViewState": "AgIAANQAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-19T18:06:41.753Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "VisitPlansController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\VisitPlansController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\VisitPlansController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\VisitPlansController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\VisitPlansController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-19T18:06:51.54Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Program.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Program.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Program.cs",
+              "RelativeToolTip": "src\\Web.Api\\Program.cs",
+              "ViewState": "AgIAADgAAAAAAAAAAAAAAFoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T21:12:33.464Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "DoctorsController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\DoctorsController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\DoctorsController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\DoctorsController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\DoctorsController.cs",
+              "ViewState": "AgIAACEAAAAAAAAAAAAYwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-19T18:06:35.238Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "AuthContracts.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Contracts\\AuthContracts.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Contracts\\AuthContracts.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Contracts\\AuthContracts.cs",
+              "RelativeToolTip": "src\\Web.Api\\Contracts\\AuthContracts.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T21:12:18.389Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "dbo.Notifications [Data]",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.Notifications.sql",
+              "ToolTip": "dbo.Notifications [Data]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-09-19T18:04:40.007Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\AuthController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\AuthController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\AuthController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\AuthController.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T21:12:22.5Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "CollectionsController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\CollectionsController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\CollectionsController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\CollectionsController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\CollectionsController.cs",
+              "ViewState": "AgIAADAAAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T21:12:28.733Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "dbo.AspNetUserLogins [Data]",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AspNetUserLogins.sql",
+              "ToolTip": "dbo.AspNetUserLogins [Data]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-09-19T18:03:29.175Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "CustodyController.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\CustodyController.cs",
+              "RelativeDocumentMoniker": "src\\Web.Api\\Controllers\\V1\\CustodyController.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Api\\Controllers\\V1\\CustodyController.cs",
+              "RelativeToolTip": "src\\Web.Api\\Controllers\\V1\\CustodyController.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T21:12:29.741Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "dbo.AspNetUsers [Data]",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AspNetUsers.sql",
+              "ToolTip": "dbo.AspNetUsers [Data]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-09-19T18:03:39.009Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "dbo.AuditLogs [Data]",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AuditLogs.sql",
+              "ToolTip": "dbo.AuditLogs [Data]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-09-19T18:04:16.098Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "dbo.CollectionAttachments [Data]",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.CollectionAttachments.sql",
+              "ToolTip": "dbo.CollectionAttachments [Data]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-09-19T18:04:32.41Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "dbo.AspNetRoles [Data]",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/PharmaErp/True/SqlTable/dbo.AspNetRoles.sql",
+              "ToolTip": "dbo.AspNetRoles [Data]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-09-19T17:50:49.373Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "Login.cshtml",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Mvc\\Views\\Account\\Login.cshtml",
+              "RelativeDocumentMoniker": "src\\Web.Mvc\\Views\\Account\\Login.cshtml",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Mvc\\Views\\Account\\Login.cshtml",
+              "RelativeToolTip": "src\\Web.Mvc\\Views\\Account\\Login.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-09-19T16:09:29.549Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "IdentitySeeder.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Infrastructure\\Identity\\IdentitySeeder.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\Identity\\IdentitySeeder.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Infrastructure\\Identity\\IdentitySeeder.cs",
+              "RelativeToolTip": "src\\Infrastructure\\Identity\\IdentitySeeder.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAwB8AAABMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:20:49.632Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "ApplicationUser.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Infrastructure\\Identity\\ApplicationUser.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\Identity\\ApplicationUser.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Infrastructure\\Identity\\ApplicationUser.cs",
+              "RelativeToolTip": "src\\Infrastructure\\Identity\\ApplicationUser.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:20:47.98Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "Territory.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Domain\\Entities\\Territory.cs",
+              "RelativeDocumentMoniker": "src\\Domain\\Entities\\Territory.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Domain\\Entities\\Territory.cs",
+              "RelativeToolTip": "src\\Domain\\Entities\\Territory.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:04:16.85Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "AuditLog.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Domain\\Entities\\AuditLog.cs",
+              "RelativeDocumentMoniker": "src\\Domain\\Entities\\AuditLog.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Domain\\Entities\\AuditLog.cs",
+              "RelativeToolTip": "src\\Domain\\Entities\\AuditLog.cs",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAzwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:04:09.084Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "BaseEntity.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Domain\\Common\\BaseEntity.cs",
+              "RelativeDocumentMoniker": "src\\Domain\\Common\\BaseEntity.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Domain\\Common\\BaseEntity.cs",
+              "RelativeToolTip": "src\\Domain\\Common\\BaseEntity.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:03:58.215Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "Program.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Mvc\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Web.Mvc\\Program.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Mvc\\Program.cs",
+              "RelativeToolTip": "src\\Web.Mvc\\Program.cs",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:01:18.228Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "DoctorFormViewModel.cs",
+              "DocumentMoniker": "F:\\Projects\\PharmaERP\\src\\Web.Mvc\\Models\\DoctorFormViewModel.cs",
+              "RelativeDocumentMoniker": "src\\Web.Mvc\\Models\\DoctorFormViewModel.cs",
+              "ToolTip": "F:\\Projects\\PharmaERP\\src\\Web.Mvc\\Models\\DoctorFormViewModel.cs",
+              "RelativeToolTip": "src\\Web.Mvc\\Models\\DoctorFormViewModel.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAswAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-18T16:02:41.019Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

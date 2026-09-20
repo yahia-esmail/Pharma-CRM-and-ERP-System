@@ -1,0 +1,47 @@
+@model DoctorFormViewModel
+@{
+    ViewData["Title"] = "Possible Duplicate";
+    var duplicates = ViewBag.Duplicates as IReadOnlyList<PharmaERP.Application.Doctors.DuplicateDoctorMatch> ?? [];
+}
+
+<h4 class="mb-3">Possible Duplicate Doctor</h4>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    One or more existing doctors match this name/phone/clinic. Review before creating a new record.
+</div>
+
+<div class="card mb-3">
+    <ul class="list-group list-group-flush">
+        @foreach (var dup in duplicates)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>@dup.FullName — @dup.ClinicOrHospital (@dup.Phone)</span>
+                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@dup.Id">View existing</a>
+            </li>
+        }
+    </ul>
+</div>
+
+<form asp-action="Create" method="post">
+    @Html.HiddenFor(m => m.Id)
+    @Html.HiddenFor(m => m.FullName)
+    @Html.HiddenFor(m => m.Specialty)
+    @Html.HiddenFor(m => m.SubSpecialty)
+    @Html.HiddenFor(m => m.ClinicOrHospital)
+    @Html.HiddenFor(m => m.Address)
+    @Html.HiddenFor(m => m.Governorate)
+    @Html.HiddenFor(m => m.City)
+    @Html.HiddenFor(m => m.Phone)
+    @Html.HiddenFor(m => m.Email)
+    @Html.HiddenFor(m => m.ClassificationId)
+    @Html.HiddenFor(m => m.PreferredVisitingDays)
+    @Html.HiddenFor(m => m.PreferredVisitingTimes)
+    @Html.HiddenFor(m => m.PrimaryRepresentativeId)
+    @Html.HiddenFor(m => m.TerritoryId)
+    @Html.HiddenFor(m => m.Status)
+    <input type="hidden" asp-for="ConfirmDespiteDuplicates" value="true" />
+
+    <button type="submit" class="btn btn-danger"><i class="bi bi-plus-lg"></i> Create anyway</button>
+    <a asp-action="Create" class="btn btn-outline-secondary">Go back and edit</a>
+</form>

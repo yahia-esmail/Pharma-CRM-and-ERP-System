@@ -1,0 +1,79 @@
+@model PharmacyFormViewModel
+
+<input type="hidden" asp-for="Id" />
+<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="LicenseNumber" class="form-label"></label>
+        <input asp-for="LicenseNumber" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="OwnerName" class="form-label"></label>
+        <input asp-for="OwnerName" class="form-control" />
+    </div>
+    <div class="col-12">
+        <label asp-for="Address" class="form-label"></label>
+        <input asp-for="Address" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Governorate" class="form-label"></label>
+        <input asp-for="Governorate" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="City" class="form-label"></label>
+        <input asp-for="City" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Phone" class="form-label"></label>
+        <input asp-for="Phone" class="form-control" />
+        <span asp-validation-for="Phone" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="WhatsAppNumber" class="form-label"></label>
+        <input asp-for="WhatsAppNumber" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Segment" class="form-label"></label>
+        <input asp-for="Segment" class="form-control" placeholder="A / B / C" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="PaymentTermDays" class="form-label"></label>
+        <input asp-for="PaymentTermDays" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="CreditLimit" class="form-label"></label>
+        <input asp-for="CreditLimit" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.PharmacyStatus>()" class="form-select"></select>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="PrimaryRepresentativeId" class="form-label"></label>
+        <select asp-for="PrimaryRepresentativeId" asp-items="Model.Representatives" class="form-select">
+            <option value="">-- none --</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="TerritoryId" class="form-label"></label>
+        <select asp-for="TerritoryId" asp-items="Model.Territories" class="form-select">
+            <option value="">-- none --</option>
+        </select>
+    </div>
+</div>
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+</div>

@@ -1,0 +1,156 @@
+@model ReturnsIndexViewModel
+@{
+    ViewData["Title"] = "Returns";
+    var canApprove = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Returns@(Model.RepresentativeName is not null ? $" — {Model.RepresentativeName}" : "")</h4>
+    @if (Model.RepresentativeId != 0)
+    {
+        <a asp-controller="Custody" asp-action="Index" asp-route-representativeId="@Model.RepresentativeId" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Custody</a>
+    }
+</div>
+
+@if (canApprove)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-4">
+                    <select name="representativeId" class="form-select" onchange="this.form.submit()" asp-items="Model.Representatives">
+                        <option value="">-- all representatives --</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Requested</th><th>Flow</th><th>Representative</th><th>Counterparty</th><th>Product</th><th>Qty</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var r in Model.Returns)
+                {
+                    <tr>
+                        <td class="text-nowrap">@r.RequestedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            @if (r.FlowType == ReturnFlowType.CustomerToRepresentative)
+                            {
+                                <span class="badge bg-info status-badge">Customer &rarr; Rep</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary status-badge">Rep &rarr; Warehouse</span>
+                            }
+                        </td>
+                        <td>@r.RepresentativeName</td>
+                        <td>@(r.PharmacyName ?? r.WarehouseName)</td>
+                        <td>@r.ProductName @(r.BatchNumber is not null ? $"({r.BatchNumber})" : "")</td>
+                        <td>@r.Quantity</td>
+                        <td>@r.Reason</td>
+                        <td>
+                            @{
+                                var statusBadge = r.Status switch
+                                {
+                                    ReturnStatus.Approved => "bg-success",
+                                    ReturnStatus.Rejected => "bg-danger",
+                                    _ => "bg-warning"
+                                };
+                            }
+                            <span class="badge @statusBadge status-badge">@r.Status</span>
+                            @if (r.Status == ReturnStatus.Rejected && !string.IsNullOrEmpty(r.RejectionReason))
+                            {
+                                <div class="text-secondary small">@r.RejectionReason</div>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (r.Status == ReturnStatus.Pending && canApprove)
+                            {
+                                <form asp-action="Approve" method="post" class="d-inline" onsubmit="return confirm('Approve this return? It will be applied immediately.');">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input type="hidden" name="representativeId" value="@Model.RepresentativeId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                                <form asp-action="Reject" method="post" class="d-inline" onsubmit="return promptReject(this);">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input type="hidden" name="representativeId" value="@Model.RepresentativeId" />
+                                    <input type="hidden" name="reason" class="reject-reason" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Returns.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-center text-secondary py-3">No returns yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.RepresentativeId != 0)
+{
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title">Request a Return</h6>
+            <form asp-action="RequestReturn" method="post" class="row g-2">
+                <input type="hidden" asp-for="NewRequest.RepresentativeId" />
+                <div class="col-md-3">
+                    <label class="form-label">Flow</label>
+                    <select asp-for="NewRequest.FlowType" asp-items="Html.GetEnumSelectList<ReturnFlowType>()" class="form-select" id="flowTypeSelect"></select>
+                </div>
+                <div class="col-md-3" id="pharmacyField">
+                    <label class="form-label">Pharmacy</label>
+                    <select asp-for="NewRequest.PharmacyId" asp-items="Model.Pharmacies" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-3" id="warehouseField">
+                    <label class="form-label">Warehouse</label>
+                    <select asp-for="NewRequest.WarehouseId" asp-items="Model.Warehouses" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Product</label>
+                    <select asp-for="NewRequest.ProductId" asp-items="Model.Products" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantity</label>
+                    <input asp-for="NewRequest.Quantity" type="number" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Reason</label>
+                    <select asp-for="NewRequest.Reason" asp-items="Html.GetEnumSelectList<ReturnReason>()" class="form-select"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Notes</label>
+                    <input asp-for="NewRequest.Notes" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> Request Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function promptReject(form) {
+            const reason = prompt('Reason for rejecting this return:');
+            if (!reason) return false;
+            form.querySelector('.reject-reason').value = reason;
+            return true;
+        }
+
+        function toggleReturnFields() {
+            const flow = document.getElementById('flowTypeSelect').value;
+            document.getElementById('pharmacyField').style.display = flow === '0' ? '' : 'none';
+            document.getElementById('warehouseField').style.display = flow === '1' ? '' : 'none';
+        }
+        document.getElementById('flowTypeSelect')?.addEventListener('change', toggleReturnFields);
+        toggleReturnFields();
+    </script>
+}

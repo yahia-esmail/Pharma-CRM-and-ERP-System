@@ -1,0 +1,111 @@
+@model DistrictDashboardViewModel
+@{
+    ViewData["Title"] = "District Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">District Dashboard</h4>
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-speedometer2"></i> Management Dashboard</a>
+</div>
+
+@if (Model.Territories.Any())
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <select name="territoryId" class="form-select" onchange="this.form.submit()" asp-items="Model.Territories">
+                        <option value="">-- select district --</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.Summary is null)
+{
+    <div class="alert alert-info"><i class="bi bi-info-circle"></i> Select a district (territory) to view its dashboard.</div>
+    return;
+}
+
+@{
+    var s = Model.Summary;
+    var monthName = new DateTime(s.Year, s.Month, 1).ToString("MMMM yyyy");
+}
+
+<h5 class="mb-3">@s.TerritoryName &mdash; @monthName</h5>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Sales This Month</div>
+            <div class="kpi-value text-primary">@s.TotalSales.ToString("C")</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Collected This Month</div>
+            <div class="kpi-value text-primary">@s.TotalCollected.ToString("C")</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Outstanding Custody</div>
+            <div class="kpi-value @(s.TotalOutstandingCustody > 0 ? "text-danger" : "")">@s.TotalOutstandingCustody.ToString("C")</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Avg. Visit Coverage / Quality</div>
+            <div class="kpi-value text-primary">@s.AverageVisitCoveragePercent% / @s.AverageVisitQualityPercent%</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header py-2"><small class="text-secondary">Representatives in this district &mdash; click through for their doctors/pharmacies</small></div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Representative</th>
+                    <th>Planned</th>
+                    <th>Actual</th>
+                    <th>Visit Coverage</th>
+                    <th>Visit Quality</th>
+                    <th>Sales This Month</th>
+                    <th>Outstanding Custody</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in s.Representatives)
+                {
+                    <tr style="cursor:pointer;" onclick="location.href='@Url.Action("Representative", new { id = r.RepresentativeId, year = s.Year, month = s.Month })'">
+                        <td>@r.RepresentativeName</td>
+                        <td>@r.PlannedVisits</td>
+                        <td>@r.ActualVisits</td>
+                        <td>
+                            @{
+                                var covClass = r.VisitCoveragePercent >= 90 ? "bg-success" : r.VisitCoveragePercent >= 70 ? "bg-warning" : "bg-danger";
+                            }
+                            <span class="badge @covClass status-badge">@r.VisitCoveragePercent%</span>
+                        </td>
+                        <td>
+                            @{
+                                var qualClass = r.VisitQualityPercent >= 90 ? "bg-success" : r.VisitQualityPercent >= 70 ? "bg-warning" : "bg-danger";
+                            }
+                            <span class="badge @qualClass status-badge">@r.VisitQualityPercent%</span>
+                        </td>
+                        <td>@r.SalesThisMonth.ToString("C")</td>
+                        <td class="@(r.OutstandingCustody > 0 ? "text-danger" : "")">@r.OutstandingCustody.ToString("C")</td>
+                    </tr>
+                }
+                @if (s.Representatives.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-secondary py-4">No representatives in this district.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

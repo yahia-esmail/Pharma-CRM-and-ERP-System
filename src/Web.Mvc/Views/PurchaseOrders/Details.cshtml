@@ -1,0 +1,139 @@
+@model PurchaseOrderDetailsViewModel
+@{
+    ViewData["Title"] = $"Purchase Order #{Model.Order.Id}";
+    var order = Model.Order;
+    var isDraft = order.Status == PharmaERP.Domain.Enums.PurchaseOrderStatus.Draft;
+    var canReceive = order.Status is PharmaERP.Domain.Enums.PurchaseOrderStatus.Sent or PharmaERP.Domain.Enums.PurchaseOrderStatus.PartiallyReceived;
+    var badgeClass = order.Status switch
+    {
+        PharmaERP.Domain.Enums.PurchaseOrderStatus.Received => "bg-success",
+        PharmaERP.Domain.Enums.PurchaseOrderStatus.PartiallyReceived => "bg-warning",
+        PharmaERP.Domain.Enums.PurchaseOrderStatus.Cancelled => "bg-danger",
+        PharmaERP.Domain.Enums.PurchaseOrderStatus.Sent => "bg-info",
+        _ => "bg-secondary"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h4 class="mb-0">PO #@order.Id &mdash; <a asp-controller="Suppliers" asp-action="Details" asp-route-id="@order.SupplierId">@order.SupplierName</a></h4>
+        <div class="text-secondary">@order.OrderDateUtc.ToString("yyyy-MM-dd") @(order.ExpectedDeliveryDate is not null ? $"· Expected {order.ExpectedDeliveryDate:yyyy-MM-dd}" : "")</div>
+    </div>
+    <span class="badge @badgeClass status-badge fs-6">@order.Status</span>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    @if (isDraft)
+    {
+        <form asp-action="Send" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Send this purchase order to the supplier?');">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Send to Supplier</button>
+        </form>
+    }
+    @if (isDraft || order.Status == PharmaERP.Domain.Enums.PurchaseOrderStatus.Sent)
+    {
+        <form asp-action="Cancel" asp-route-id="@order.Id" method="post" onsubmit="return confirm('Cancel this purchase order?');">
+            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i> Cancel</button>
+        </form>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Product</th><th>Qty Ordered</th><th>Qty Received</th><th>Unit Cost</th><th>Line Total</th>@if (isDraft) {<th></th>}</tr></thead>
+            <tbody>
+                @foreach (var line in order.Lines)
+                {
+                    <tr>
+                        <td>@line.ProductName</td>
+                        <td>@line.Quantity</td>
+                        <td>@line.QuantityReceived @(line.QuantityReceived >= line.Quantity ? "✓" : "")</td>
+                        <td>@line.UnitCost.ToString("C")</td>
+                        <td>@line.LineTotal.ToString("C")</td>
+                        @if (isDraft)
+                        {
+                            <td>
+                                <form asp-action="RemoveLine" method="post" class="d-inline">
+                                    <input type="hidden" name="purchaseOrderId" value="@order.Id" />
+                                    <input type="hidden" name="lineId" value="@line.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (order.Lines.Count == 0)
+                {
+                    <tr><td colspan="@(isDraft ? 6 : 5)" class="text-center text-secondary py-3">No lines yet.</td></tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-semibold">
+                    <td colspan="4" class="text-end">Total</td>
+                    <td>@order.TotalAmount.ToString("C")</td>
+                    @if (isDraft) { <td></td> }
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+@if (isDraft)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title">Add Line</h6>
+            <form asp-action="AddLine" method="post" class="row g-2">
+                <input type="hidden" asp-for="NewLine.PurchaseOrderId" />
+                <div class="col-md-5">
+                    <select asp-for="NewLine.ProductId" asp-items="Model.Products" class="form-select"><option value="">-- select product --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <input asp-for="NewLine.Quantity" type="number" class="form-control" placeholder="Qty" />
+                </div>
+                <div class="col-md-3">
+                    <input asp-for="NewLine.UnitCost" type="number" step="0.01" class="form-control" placeholder="Unit cost" />
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (canReceive)
+{
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title">Receive Goods</h6>
+            <p class="text-secondary small"><i class="bi bi-info-circle"></i> Receives one line at a time — creates a linked warehouse stock movement immediately.</p>
+            <form asp-action="Receive" method="post" class="row g-2">
+                <input type="hidden" asp-for="Receipt.PurchaseOrderId" />
+                <div class="col-md-3">
+                    <label class="form-label">Warehouse</label>
+                    <select asp-for="Receipt.WarehouseId" asp-items="Model.Receipt.Warehouses" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">PO Line</label>
+                    <select asp-for="Receipt.PurchaseOrderLineId" asp-items="Model.Receipt.OrderLines" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantity</label>
+                    <input asp-for="Receipt.Quantity" type="number" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Batch #</label>
+                    <input asp-for="Receipt.BatchNumber" class="form-control" placeholder="if batch-tracked" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Expiry</label>
+                    <input asp-for="Receipt.ExpiryDate" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-in-down"></i> Record Receipt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}

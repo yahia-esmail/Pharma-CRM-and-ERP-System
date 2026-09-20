@@ -1,0 +1,48 @@
+@model IReadOnlyList<CustomerTransferLogDto>
+@{
+    ViewData["Title"] = "Customer Transfer Log";
+}
+<h4 class="mb-3">Customer Transfer Log</h4>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Date (UTC)</th>
+                    <th>Kind</th>
+                    <th>Customer</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model)
+                {
+                    <tr>
+                        <td class="text-nowrap">@t.TransferDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@t.Kind</td>
+                        <td>
+                            @if (t.Kind == "Doctor")
+                            {
+                                <a asp-controller="Doctors" asp-action="Details" asp-route-id="@t.EntityId">@t.EntityName</a>
+                            }
+                            else
+                            {
+                                <a asp-controller="Pharmacies" asp-action="Details" asp-route-id="@t.EntityId">@t.EntityName</a>
+                            }
+                        </td>
+                        <td>@t.FromRepresentativeName</td>
+                        <td>@t.ToRepresentativeName</td>
+                        <td><small class="text-secondary">@t.Reason</small></td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-4">No transfers recorded.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

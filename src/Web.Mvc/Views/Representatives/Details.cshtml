@@ -1,0 +1,42 @@
+@model RepresentativeDetailDto
+@{
+    ViewData["Title"] = Model.FullName;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h4 class="mb-0">@Model.FullName</h4>
+        <div class="text-secondary">@Model.EmployeeCode — @Model.Level</div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        }
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager))
+        {
+            <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Deactivate this representative?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle"></i> Deactivate</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Territory</dt><dd class="col-sm-9">@Model.TerritoryName</dd>
+            <dt class="col-sm-3">Reports To</dt><dd class="col-sm-9">@Model.ReportingManagerName</dd>
+            <dt class="col-sm-3">Phone</dt><dd class="col-sm-9">@Model.Phone</dd>
+            <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Email</dd>
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+                <span class="badge @(Model.EmploymentStatus == PharmaERP.Domain.Enums.EmploymentStatus.Active ? "bg-success" : "bg-secondary") status-badge">@Model.EmploymentStatus</span>
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <i class="bi bi-info-circle"></i> Visit planning, stock custody, and financial custody views for this representative arrive in later phases.
+</div>

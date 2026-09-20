@@ -1,0 +1,109 @@
+/* Pharma CRM/ERP design system — spec Section 6 */
+:root {
+  --pharma-primary: #0B6E6E;
+  --pharma-primary-dark: #095656;
+  --pharma-secondary: #1F2A44;
+  --pharma-accent: #2F80ED;
+
+  --pharma-success: #1E9E6B;
+  --pharma-warning: #F2A93B;
+  --pharma-danger: #D64545;
+  --pharma-info: #3BA7DB;
+
+  --pharma-bg: #F5F7FA;
+  --pharma-surface: #FFFFFF;
+  --pharma-border: #E2E6ED;
+  --pharma-text-primary: #1B1F27;
+  --pharma-text-secondary: #5B6472;
+  --pharma-text-disabled: #A4ACB9;
+
+  --pharma-sidebar-bg: #1F2A44;
+  --pharma-sidebar-text: #C9D2E3;
+  --pharma-sidebar-active-bg: #0B6E6E;
+
+  --bs-primary: var(--pharma-primary);
+  --bs-primary-rgb: 11, 110, 110;
+  --bs-success: var(--pharma-success);
+  --bs-warning: var(--pharma-warning);
+  --bs-danger: var(--pharma-danger);
+  --bs-info: var(--pharma-info);
+}
+
+body {
+  background-color: var(--pharma-bg);
+  color: var(--pharma-text-primary);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--pharma-primary);
+  --bs-btn-border-color: var(--pharma-primary);
+  --bs-btn-hover-bg: var(--pharma-primary-dark);
+  --bs-btn-hover-border-color: var(--pharma-primary-dark);
+  --bs-btn-active-bg: var(--pharma-primary-dark);
+}
+
+.text-primary { color: var(--pharma-primary) !important; }
+.badge.bg-primary { background-color: var(--pharma-primary) !important; }
+
+.app-shell { display: flex; min-height: 100vh; }
+
+.app-sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  background-color: var(--pharma-sidebar-bg);
+  color: var(--pharma-sidebar-text);
+  transition: margin-left .2s ease;
+}
+.app-sidebar .brand {
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  font-size: 1.1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.app-sidebar .nav-link {
+  color: var(--pharma-sidebar-text);
+  padding: .65rem 1.25rem;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.app-sidebar .nav-link:hover { background-color: rgba(255,255,255,.06); color: #fff; }
+.app-sidebar .nav-link.active { background-color: var(--pharma-sidebar-active-bg); color: #fff; }
+
+@media (max-width: 991.98px) {
+  .app-sidebar { position: fixed; z-index: 1040; height: 100%; margin-left: -250px; }
+  .app-sidebar.show { margin-left: 0; }
+}
+
+.app-main { flex: 1; min-width: 0; }
+
+.app-topbar {
+  background-color: var(--pharma-surface);
+  border-bottom: 1px solid var(--pharma-border);
+  padding: .6rem 1.25rem;
+}
+
+.app-content { padding: 1.5rem; }
+
+.card {
+  border: 1px solid var(--pharma-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.kpi-tile .kpi-value { font-size: 1.75rem; font-weight: 600; }
+.kpi-tile .kpi-label { color: var(--pharma-text-secondary); font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+
+.table thead th {
+  color: var(--pharma-text-secondary);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  border-bottom-width: 1px;
+}
+
+.status-badge { font-weight: 500; }

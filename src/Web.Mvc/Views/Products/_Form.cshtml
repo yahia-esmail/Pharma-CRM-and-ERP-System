@@ -1,0 +1,53 @@
+@model ProductFormViewModel
+
+<input type="hidden" asp-for="Id" />
+<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+<div class="row g-3">
+    <div class="col-md-3">
+        <label asp-for="Sku" class="form-label"></label>
+        <input asp-for="Sku" class="form-control" />
+        <span asp-validation-for="Sku" class="text-danger"></span>
+    </div>
+    <div class="col-md-5">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Category" class="form-label"></label>
+        <input asp-for="Category" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="UnitOfMeasure" class="form-label"></label>
+        <input asp-for="UnitOfMeasure" class="form-control" />
+        <span asp-validation-for="UnitOfMeasure" class="text-danger"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="UnitCost" class="form-label"></label>
+        <input asp-for="UnitCost" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="UnitPrice" class="form-label"></label>
+        <input asp-for="UnitPrice" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="ReorderLevel" class="form-label"></label>
+        <input asp-for="ReorderLevel" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <div class="form-check mt-4">
+            <input asp-for="IsBatchTracked" class="form-check-input" />
+            <label asp-for="IsBatchTracked" class="form-check-label"></label>
+        </div>
+        <div class="form-check">
+            <input asp-for="IsExpiryTracked" class="form-check-input" />
+            <label asp-for="IsExpiryTracked" class="form-check-label"></label>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+</div>

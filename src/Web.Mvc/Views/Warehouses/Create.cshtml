@@ -1,0 +1,11 @@
+@model WarehouseFormViewModel
+@{
+    ViewData["Title"] = "Add Warehouse";
+}
+
+<h4 class="mb-3">Add Warehouse</h4>
+<div class="card"><div class="card-body">
+    <form asp-action="Create" method="post">
+        <partial name="_Form" />
+    </form>
+</div></div>

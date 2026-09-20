@@ -1,0 +1,10 @@
+@model ListFormViewModel
+@{
+    ViewData["Title"] = "New List";
+}
+<h4 class="mb-3">New List</h4>
+<div class="card"><div class="card-body">
+    <form asp-action="Create" method="post">
+        @await Html.PartialAsync("_Form", Model)
+    </form>
+</div></div>

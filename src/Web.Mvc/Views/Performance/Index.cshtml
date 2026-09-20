@@ -1,0 +1,153 @@
+@model PerformanceDashboardViewModel
+@{
+    ViewData["Title"] = "Performance Dashboard";
+    var monthName = new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Performance Dashboard &mdash; @monthName</h4>
+    <a asp-action="Export" asp-route-territoryId="@Model.TerritoryId" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-file-earmark-spreadsheet"></i> Export to Excel
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-2">
+                <select name="month" class="form-select">
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        <option value="@m" selected="@(m == Model.Month)">@(new DateTime(2000, m, 1).ToString("MMMM"))</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="year" value="@Model.Year" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary w-100">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Representatives</div>
+            <div class="kpi-value text-primary">@Model.Scorecards.Count</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Avg. Visit Coverage</div>
+            <div class="kpi-value text-primary">@(Model.Scorecards.Count > 0 ? Math.Round(Model.Scorecards.Average(s => s.VisitCoveragePercent), 1) : 0)%</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Total Planned Visits</div>
+            <div class="kpi-value text-primary">@Model.Scorecards.Sum(s => s.PlannedVisits)</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Total Actual Visits</div>
+            <div class="kpi-value text-primary">@Model.Scorecards.Sum(s => s.ActualVisits)</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Avg. Visit Quality</div>
+            <div class="kpi-value text-primary">@(Model.Scorecards.Count > 0 ? Math.Round(Model.Scorecards.Average(s => s.VisitQualityPercent), 1) : 100)%</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Representative</th>
+                    <th>Territory</th>
+                    <th>Planned</th>
+                    <th>Actual</th>
+                    <th>Visit Coverage</th>
+                    <th>Target</th>
+                    <th>Doctor Coverage</th>
+                    <th>Visit Quality</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Scorecards)
+                {
+                    var trafficClass = s.VisitCoverageTarget is null
+                        ? "bg-secondary"
+                        : s.VisitCoveragePercent >= (double)s.VisitCoverageTarget
+                            ? "bg-success"
+                            : s.VisitCoveragePercent >= (double)s.VisitCoverageTarget * 0.75
+                                ? "bg-warning"
+                                : "bg-danger";
+                    <tr>
+                        <td>@s.RepresentativeName</td>
+                        <td>@s.TerritoryName</td>
+                        <td>@s.PlannedVisits</td>
+                        <td>@s.ActualVisits</td>
+                        <td><span class="badge @trafficClass status-badge">@s.VisitCoveragePercent%</span></td>
+                        <td>
+                            @if (s.VisitCoverageTarget is not null)
+                            {
+                                @($"{s.VisitCoverageTarget}%")
+                            }
+                            else
+                            {
+                                <span class="text-secondary">&ndash;</span>
+                            }
+                            @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+                            {
+                                <button type="button" class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="modal" data-bs-target="#targetModal-@s.RepresentativeId">edit</button>
+                            }
+                        </td>
+                        <td>@s.DoctorCoveragePercent% <span class="text-secondary">(@s.DoctorsVisitedCount/@s.AssignedDoctorCount)</span></td>
+                        <td>
+                            @{
+                                var qualityClass = s.VisitQualityPercent >= 90 ? "bg-success" : s.VisitQualityPercent >= 70 ? "bg-warning" : "bg-danger";
+                            }
+                            <span class="badge @qualityClass status-badge">@s.VisitQualityPercent%</span>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="targetModal-@s.RepresentativeId" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form asp-action="SetTarget" method="post">
+                                    <input type="hidden" name="RepresentativeId" value="@s.RepresentativeId" />
+                                    <input type="hidden" name="Year" value="@Model.Year" />
+                                    <input type="hidden" name="Month" value="@Model.Month" />
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Visit Coverage Target &mdash; @s.RepresentativeName</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <label class="form-label">Target (%)</label>
+                                        <input type="number" name="TargetValue" class="form-control" value="@(s.VisitCoverageTarget ?? 90)" min="0" max="100" step="1" />
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (Model.Scorecards.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-secondary py-4">No representatives in scope.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

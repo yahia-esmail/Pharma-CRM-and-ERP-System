@@ -1,0 +1,124 @@
+@model WarehouseOperationsViewModel
+@{
+    ViewData["Title"] = "Warehouse Operations";
+}
+
+<h4 class="mb-3">Warehouse Operations</h4>
+
+<ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#receipt">Goods Receipt</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#transfer">Transfer</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#adjust">Adjustment</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="receipt">
+        <p class="text-secondary small"><i class="bi bi-info-circle"></i> Manual/simplified stock-in — full Purchase Order receiving arrives in Phase 5.</p>
+        <form asp-action="GoodsReceipt" method="post" class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label">Warehouse</label>
+                <select asp-for="GoodsReceipt.WarehouseId" asp-items="Model.Warehouses" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Product</label>
+                <select asp-for="GoodsReceipt.ProductId" asp-items="Model.Products" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Quantity</label>
+                <input asp-for="GoodsReceipt.Quantity" type="number" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Batch Number</label>
+                <input asp-for="GoodsReceipt.BatchNumber" class="form-control" placeholder="required if batch-tracked" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Manufacture Date</label>
+                <input asp-for="GoodsReceipt.ManufactureDate" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Expiry Date</label>
+                <input asp-for="GoodsReceipt.ExpiryDate" class="form-control" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Reference Note</label>
+                <input asp-for="GoodsReceipt.ReferenceNote" class="form-control" />
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-in-down"></i> Record Receipt</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="tab-pane fade" id="transfer">
+        <form asp-action="Transfer" method="post" class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label">Source Warehouse</label>
+                <select asp-for="Transfer.SourceWarehouseId" asp-items="Model.Warehouses" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Destination Warehouse</label>
+                <select asp-for="Transfer.DestinationWarehouseId" asp-items="Model.Warehouses" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Product</label>
+                <select asp-for="Transfer.ProductId" asp-items="Model.Products" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Quantity</label>
+                <input asp-for="Transfer.Quantity" type="number" class="form-control" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Reference Note</label>
+                <input asp-for="Transfer.ReferenceNote" class="form-control" />
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-arrow-left-right"></i> Record Transfer</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="tab-pane fade" id="adjust">
+        <form asp-action="Adjust" method="post" class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label">Warehouse</label>
+                <select asp-for="Adjustment.WarehouseId" asp-items="Model.Warehouses" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Product</label>
+                <select asp-for="Adjustment.ProductId" asp-items="Model.Products" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Quantity</label>
+                <input asp-for="Adjustment.Quantity" type="number" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Direction</label>
+                <select asp-for="Adjustment.IsIncrease" class="form-select">
+                    <option value="true">Increase</option>
+                    <option value="false">Decrease</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label">Reason</label>
+                <input asp-for="Adjustment.ReasonCode" class="form-control" placeholder="e.g. Damaged, Expired, Count correction" />
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-pencil-square"></i> Record Adjustment</button>
+            </div>
+        </form>
+    </div>
+</div>

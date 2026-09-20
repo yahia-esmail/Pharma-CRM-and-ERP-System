@@ -1,0 +1,34 @@
+@model TerritoryDetailDto
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <h4 class="mb-0">@Model.Name</h4>
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Type</dt><dd class="col-sm-9">@Model.Type</dd>
+            <dt class="col-sm-3">Parent Territory</dt>
+            <dd class="col-sm-9">
+                @if (Model.ParentTerritoryId is { } parentId)
+                {
+                    <a asp-action="Details" asp-route-id="@parentId">@Model.ParentTerritoryName</a>
+                }
+                else
+                {
+                    <span class="text-secondary">-- top level --</span>
+                }
+            </dd>
+            <dt class="col-sm-3">Region</dt><dd class="col-sm-9">@Model.Region</dd>
+            <dt class="col-sm-3">District Manager</dt><dd class="col-sm-9">@Model.DistrictManagerName</dd>
+            <dt class="col-sm-3">Description</dt><dd class="col-sm-9">@Model.Description</dd>
+        </dl>
+    </div>
+</div>

@@ -1,0 +1,180 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Executive Summary";
+    var s = Model.Summary;
+    var monthName = new DateTime(s.Year, s.Month, 1).ToString("MMMM yyyy");
+    var salesDelta = s.TotalSalesLastMonth == 0 ? 0 : Math.Round((s.TotalSalesThisMonth - s.TotalSalesLastMonth) / s.TotalSalesLastMonth * 100, 1);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Executive Summary &mdash; @monthName</h4>
+    <a asp-controller="AuditTrail" asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-clock-history"></i> Audit Trail</a>
+</div>
+
+@if (Model.Territories.Any())
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <select name="territoryId" class="form-select" onchange="this.form.submit()" asp-items="Model.Territories">
+                        <option value="">-- all territories --</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Sales This Month</div>
+            <div class="kpi-value text-primary">@s.TotalSalesThisMonth.ToString("C")</div>
+            <div class="small @(salesDelta >= 0 ? "text-success" : "text-danger")">
+                <i class="bi bi-arrow-@(salesDelta >= 0 ? "up" : "down")"></i> @salesDelta% vs. last month
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Collected This Month</div>
+            <div class="kpi-value text-primary">@s.TotalCollectedThisMonth.ToString("C")</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Rep Custody Outstanding</div>
+            <div class="kpi-value @(s.TotalOutstandingRepCustody > 0 ? "text-danger" : "")">@s.TotalOutstandingRepCustody.ToString("C")</div>
+            @if (s.RepsWithOverdueRemittance > 0)
+            {
+                <div class="small text-danger"><i class="bi bi-exclamation-triangle"></i> @s.RepsWithOverdueRemittance overdue</div>
+            }
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Avg. Visit Coverage</div>
+            <div class="kpi-value text-primary">@s.AverageVisitCoveragePercent%</div>
+            <div class="small text-secondary">@s.TotalActualVisitsThisMonth / @s.TotalPlannedVisitsThisMonth planned</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Active Representatives</div>
+            <div class="kpi-value text-primary">@s.ActiveRepresentativeCount</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Doctors / Pharmacies</div>
+            <div class="kpi-value text-primary">@s.ActiveDoctorCount / @s.ActivePharmacyCount</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Stock Alerts</div>
+            <div class="kpi-value @(s.NearExpiryBatchCount + s.LowStockProductCount > 0 ? "text-warning" : "")">@s.NearExpiryBatchCount + @s.LowStockProductCount</div>
+            <div class="small text-secondary">near-expiry + low-stock</div>
+            <a asp-controller="Warehouses" asp-action="Reports" class="stretched-link small"></a>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card kpi-tile p-3">
+            <div class="kpi-label">Supplier Payables</div>
+            <div class="kpi-value @(s.TotalOutstandingSupplierPayables > 0 ? "text-danger" : "")">@s.TotalOutstandingSupplierPayables.ToString("C")</div>
+            <div class="small text-secondary">Spend this month: @s.TotalPurchaseSpendThisMonth.ToString("C")</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Sales Trend (6 months)</h6>
+                <canvas id="salesTrendChart" height="90"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Top Performers</h6>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        @foreach (var t in s.TopPerformers)
+                        {
+                            <tr>
+                                <td>@t.RepresentativeName</td>
+                                <td class="text-end fw-semibold">@t.VisitCoveragePercent%</td>
+                            </tr>
+                        }
+                        @if (s.TopPerformers.Count == 0)
+                        {
+                            <tr><td class="text-center text-secondary py-3">No performance data yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <a asp-controller="Performance" asp-action="Index" class="small">View full leaderboard &rarr;</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (s.UrgentExpiries.Count > 0)
+{
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title"><i class="bi bi-exclamation-triangle text-warning"></i> Urgent: Near-Expiry Stock</h6>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Product</th><th>Batch</th><th>Expiry</th><th>Warehouse Qty</th><th>Custody Qty</th></tr></thead>
+                <tbody>
+                    @foreach (var b in s.UrgentExpiries)
+                    {
+                        <tr>
+                            <td>@b.ProductName</td>
+                            <td>@b.BatchNumber</td>
+                            <td>
+                                <span class="badge @(b.DaysUntilExpiry < 0 ? "bg-danger" : "bg-warning") status-badge">
+                                    @(b.DaysUntilExpiry < 0 ? "Expired" : $"{b.DaysUntilExpiry}d left")
+                                </span>
+                            </td>
+                            <td>@b.WarehouseQuantity</td>
+                            <td>@b.CustodyQuantity</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <a asp-controller="Warehouses" asp-action="Reports" class="small">View all alerts &rarr;</a>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        const trend = @Html.Raw(Json.Serialize(s.SalesTrend.Select(p => new { Label = $"{p.Year}-{p.Month:00}", p.TotalSales })));
+        new Chart(document.getElementById('salesTrendChart'), {
+            type: 'line',
+            data: {
+                labels: trend.map(p => p.Label),
+                datasets: [{
+                    label: 'Sales',
+                    data: trend.map(p => p.TotalSales),
+                    borderColor: '#0B6E6E',
+                    backgroundColor: 'rgba(11,110,110,0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    </script>
+}

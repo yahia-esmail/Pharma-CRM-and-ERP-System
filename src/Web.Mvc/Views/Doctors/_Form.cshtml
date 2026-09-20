@@ -1,0 +1,87 @@
+@model DoctorFormViewModel
+
+<input type="hidden" asp-for="Id" />
+<input type="hidden" asp-for="ConfirmDespiteDuplicates" />
+<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="FullName" class="form-label"></label>
+        <input asp-for="FullName" class="form-control" />
+        <span asp-validation-for="FullName" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Specialty" class="form-label"></label>
+        <input asp-for="Specialty" class="form-control" />
+        <span asp-validation-for="Specialty" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="SubSpecialty" class="form-label"></label>
+        <input asp-for="SubSpecialty" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="ClinicOrHospital" class="form-label"></label>
+        <input asp-for="ClinicOrHospital" class="form-control" />
+    </div>
+    <div class="col-12">
+        <label asp-for="Address" class="form-label"></label>
+        <input asp-for="Address" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Governorate" class="form-label"></label>
+        <input asp-for="Governorate" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="City" class="form-label"></label>
+        <input asp-for="City" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Phone" class="form-label"></label>
+        <input asp-for="Phone" class="form-control" />
+        <span asp-validation-for="Phone" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="WhatsAppNumber" class="form-label"></label>
+        <input asp-for="WhatsAppNumber" class="form-control" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="ClassificationId" class="form-label"></label>
+        <select asp-for="ClassificationId" asp-items="Model.Classifications" class="form-select">
+            <option value="">-- none --</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="PrimaryRepresentativeId" class="form-label"></label>
+        <select asp-for="PrimaryRepresentativeId" asp-items="Model.Representatives" class="form-select">
+            <option value="">-- none --</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="TerritoryId" class="form-label"></label>
+        <select asp-for="TerritoryId" asp-items="Model.Territories" class="form-select">
+            <option value="">-- none --</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="PreferredVisitingDays" class="form-label"></label>
+        <input asp-for="PreferredVisitingDays" class="form-control" placeholder="e.g. Mon, Wed" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="PreferredVisitingTimes" class="form-label"></label>
+        <input asp-for="PreferredVisitingTimes" class="form-control" placeholder="e.g. 10:00-12:00" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.DoctorStatus>()" class="form-select"></select>
+    </div>
+</div>
+
+<div class="mt-4 d-flex gap-2 sticky-bottom bg-white py-2">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+</div>

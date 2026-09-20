@@ -1,0 +1,75 @@
+@model PagedResult<RepresentativeListItemDto>
+@{
+    ViewData["Title"] = "Representatives";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Representatives</h4>
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+    {
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Add Representative</a>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-4">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search by name or employee code..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Name</th>
+                    <th>Level</th>
+                    <th>Territory</th>
+                    <th>Reports To</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Items)
+                {
+                    <tr style="cursor:pointer;" onclick="location.href='@Url.Action("Details", new { id = r.Id })'">
+                        <td>@r.EmployeeCode</td>
+                        <td>@r.FullName</td>
+                        <td>@r.Level</td>
+                        <td>@r.TerritoryName</td>
+                        <td>@r.ReportingManagerName</td>
+                        <td>
+                            <span class="badge @(r.EmploymentStatus == PharmaERP.Domain.Enums.EmploymentStatus.Active ? "bg-success" : "bg-secondary") status-badge">@r.EmploymentStatus</span>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-4">No representatives found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { page = p, search = ViewBag.Search })">@p</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

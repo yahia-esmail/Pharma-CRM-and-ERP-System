@@ -1,0 +1,124 @@
+@model BatchTraceDto
+@{
+    ViewData["Title"] = $"Trace — Batch {Model.BatchNumber}";
+}
+
+<h4 class="mb-1">Trace This Transaction</h4>
+<div class="text-secondary mb-3">@Model.ProductName &mdash; Batch @Model.BatchNumber &mdash; Expires @Model.ExpiryDate.ToString("yyyy-MM-dd")</div>
+
+<div class="trace-chain">
+    <div class="card mb-2">
+        <div class="card-body">
+            <h6 class="text-secondary text-uppercase small mb-2"><i class="bi bi-truck"></i> 1. Supplier Origin</h6>
+            @if (Model.Origins.Count == 0)
+            {
+                <p class="text-secondary mb-0">No purchase-order origin recorded for this batch (manual goods receipt).</p>
+            }
+            else
+            {
+                @foreach (var o in Model.Origins)
+                {
+                    <div class="d-flex justify-content-between border-bottom py-1">
+                        <span><a asp-controller="Suppliers" asp-action="Details" asp-route-id="@o.SupplierId">@o.SupplierName</a> &mdash; PO #@o.PurchaseOrderId</span>
+                        <span class="text-secondary">@o.ReceiptDateUtc.ToString("yyyy-MM-dd") &middot; @o.UnitCost.ToString("C")/unit</span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="text-center text-secondary"><i class="bi bi-arrow-down fs-4"></i></div>
+
+    <div class="card mb-2">
+        <div class="card-body">
+            <h6 class="text-secondary text-uppercase small mb-2"><i class="bi bi-building"></i> 2. Warehouse Movements</h6>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>From</th><th>To</th></tr></thead>
+                <tbody>
+                    @foreach (var m in Model.Movements)
+                    {
+                        <tr>
+                            <td>@m.MovementDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td><span class="badge bg-info status-badge">@m.MovementType</span></td>
+                            <td>@m.Quantity</td>
+                            <td>@m.SourceLocation</td>
+                            <td>@m.DestinationLocation</td>
+                        </tr>
+                    }
+                    @if (Model.Movements.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-secondary py-2">No warehouse movements.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="text-center text-secondary"><i class="bi bi-arrow-down fs-4"></i></div>
+
+    <div class="card mb-2">
+        <div class="card-body">
+            <h6 class="text-secondary text-uppercase small mb-2"><i class="bi bi-clipboard-check"></i> 3. Representative Stock Custody</h6>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Date</th><th>Representative</th><th>Type</th><th>Qty</th><th>Note</th></tr></thead>
+                <tbody>
+                    @foreach (var c in Model.CustodyEntries)
+                    {
+                        <tr>
+                            <td>@c.TransactionDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@c.RepresentativeName</td>
+                            <td><span class="badge bg-secondary status-badge">@c.TransactionType</span></td>
+                            <td class="@(c.Quantity < 0 ? "text-danger" : "text-success")">@c.Quantity</td>
+                            <td>@(c.SaleId is not null ? $"Sale #{c.SaleId}" : c.ReasonCode)</td>
+                        </tr>
+                    }
+                    @if (Model.CustodyEntries.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-secondary py-2">No custody activity.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="text-center text-secondary"><i class="bi bi-arrow-down fs-4"></i></div>
+
+    <div class="card">
+        <div class="card-body">
+            <h6 class="text-secondary text-uppercase small mb-2"><i class="bi bi-receipt"></i> 4. Sales &amp; Collections</h6>
+            @foreach (var sale in Model.Sales)
+            {
+                <div class="border rounded p-2 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <span>
+                            <a asp-action="Sale" asp-route-id="@sale.SaleId">Sale #@sale.SaleId</a>
+                            &mdash; @sale.RepresentativeName &rarr; @sale.PharmacyName
+                        </span>
+                        <span class="fw-semibold">@sale.Amount.ToString("C")</span>
+                    </div>
+                    <div class="text-secondary small">@sale.SaleDateUtc.ToString("yyyy-MM-dd")</div>
+                    @if (sale.Collections.Count > 0)
+                    {
+                        <table class="table table-sm mt-2 mb-0">
+                            <thead><tr><th>Collection Date</th><th>Amount</th><th>Method</th></tr></thead>
+                            <tbody>
+                                @foreach (var c in sale.Collections)
+                                {
+                                    <tr><td>@c.CollectionDateUtc.ToString("yyyy-MM-dd")</td><td>@c.Amount.ToString("C")</td><td>@c.PaymentMethod</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-warning small mt-1"><i class="bi bi-exclamation-circle"></i> Not yet collected.</div>
+                    }
+                </div>
+            }
+            @if (Model.Sales.Count == 0)
+            {
+                <p class="text-secondary mb-0">This batch hasn't been sold yet.</p>
+            }
+        </div>
+    </div>
+</div>

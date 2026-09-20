@@ -1,0 +1,49 @@
+@model IReadOnlyList<CustomerListSummaryDto>
+@{
+    ViewData["Title"] = "Lists";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Lists Management</h4>
+    <div class="d-flex gap-2">
+        <a asp-action="Transfers" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left-right"></i> Transfer Log</a>
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+        {
+            <a asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New List</a>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Mode</th>
+                    <th>Owner</th>
+                    <th>Members</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var l in Model)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@l.Id">@l.Name</a></td>
+                        <td>@l.Type</td>
+                        <td><span class="badge @(l.Mode == CustomerListMode.Static ? "bg-info" : "bg-purple") status-badge">@l.Mode</span></td>
+                        <td>@l.OwnerRepresentativeName</td>
+                        <td>@l.MemberCount</td>
+                        <td><span class="badge @(l.Status == CustomerListStatus.Active ? "bg-success" : "bg-secondary") status-badge">@l.Status</span></td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-4">No lists defined yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

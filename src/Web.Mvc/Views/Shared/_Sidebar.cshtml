@@ -1,0 +1,185 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    string ActiveClass(string name) => string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<nav class="app-sidebar" id="appSidebar">
+    <div class="brand">
+        <i class="bi bi-capsule-pill"></i> Pharma CRM/ERP
+    </div>
+    <ul class="nav flex-column py-2">
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("DistrictDashboard")" asp-controller="DistrictDashboard" asp-action="Index">
+                    <i class="bi bi-diagram-3"></i> District Dashboard
+                </a>
+            </li>
+        }
+        else
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Home")" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-speedometer2"></i> Home
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Doctors")" asp-controller="Doctors" asp-action="Index">
+                    <i class="bi bi-heart-pulse"></i> Doctors
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Representatives")" asp-controller="Representatives" asp-action="Index">
+                    <i class="bi bi-people"></i> Representatives
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Territories")" asp-controller="Territories" asp-action="Index">
+                    <i class="bi bi-geo-alt"></i> Territories
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Lists")" asp-controller="Lists" asp-action="Index">
+                    <i class="bi bi-list-check"></i> Lists
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("VisitPlans")" asp-controller="VisitPlans" asp-action="Index">
+                    <i class="bi bi-calendar-check"></i> Visit Plans
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative) || User.IsInRole(Roles.Finance))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Pharmacies")" asp-controller="Pharmacies" asp-action="Index">
+                    <i class="bi bi-shop"></i> Pharmacies
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Orders")" asp-controller="Orders" asp-action="Index">
+                    <i class="bi bi-cart3"></i> Orders
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Sales")" asp-controller="Sales" asp-action="Index">
+                    <i class="bi bi-graph-up"></i> Sales
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse) || User.IsInRole(Roles.Procurement))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Products")" asp-controller="Products" asp-action="Index">
+                    <i class="bi bi-box-seam"></i> Products
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Warehouses")" asp-controller="Warehouses" asp-action="Index">
+                    <i class="bi bi-building"></i> Warehouses
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative) || User.IsInRole(Roles.Warehouse))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Custody")" asp-controller="Custody" asp-action="Index">
+                    <i class="bi bi-clipboard-check"></i> Stock Custody
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Returns")" asp-controller="Returns" asp-action="Index">
+                    <i class="bi bi-arrow-return-left"></i> Returns
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative) || User.IsInRole(Roles.Finance))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Collections")" asp-controller="Collections" asp-action="Index">
+                    <i class="bi bi-cash-coin"></i> Collections
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.Warehouse)
+             || User.IsInRole(Roles.Finance) || User.IsInRole(Roles.Procurement))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Suppliers")" asp-controller="Suppliers" asp-action="Index">
+                    <i class="bi bi-truck"></i> Suppliers
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("PurchaseOrders")" asp-controller="PurchaseOrders" asp-action="Index">
+                    <i class="bi bi-clipboard-data"></i> Purchase Orders
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+             || User.IsInRole(Roles.DistrictManager))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Performance")" asp-controller="Performance" asp-action="Index">
+                    <i class="bi bi-graph-up-arrow"></i> Performance
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("LocationTracking")" asp-controller="LocationTracking" asp-action="Index">
+                    <i class="bi bi-pin-map"></i> Location Map
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("Users")" asp-controller="Users" asp-action="Index">
+                    <i class="bi bi-person-gear"></i> User Management
+                </a>
+            </li>
+        }
+
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management))
+        {
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("AuditTrail")" asp-controller="AuditTrail" asp-action="Index">
+                    <i class="bi bi-clock-history"></i> Audit Trail
+                </a>
+            </li>
+        }
+    </ul>
+</nav>

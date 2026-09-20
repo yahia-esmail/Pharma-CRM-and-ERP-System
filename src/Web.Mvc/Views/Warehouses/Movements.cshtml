@@ -1,0 +1,66 @@
+@model PagedResult<StockMovementDto>
+@{
+    ViewData["Title"] = "Stock Movements";
+    var warehouses = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Warehouses;
+    var products = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Products;
+}
+
+<h4 class="mb-3">Stock Movement Ledger</h4>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-4">
+                <select name="warehouseId" class="form-select" onchange="this.form.submit()" asp-items="warehouses">
+                    <option value="">-- all warehouses --</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="productId" class="form-select" onchange="this.form.submit()" asp-items="products">
+                    <option value="">-- all products --</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Date</th><th>Type</th><th>Product</th><th>Batch</th><th>Qty</th><th>From</th><th>To</th><th>Reason</th></tr></thead>
+            <tbody>
+                @foreach (var m in Model.Items)
+                {
+                    <tr>
+                        <td>@m.MovementDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><span class="badge bg-info status-badge">@m.MovementType</span></td>
+                        <td>@m.ProductName</td>
+                        <td>@m.BatchNumber</td>
+                        <td>@m.Quantity</td>
+                        <td>@(m.SourceWarehouseName ?? m.RepresentativeName)</td>
+                        <td>@(m.DestinationWarehouseName ?? m.RepresentativeName)</td>
+                        <td>@m.ReasonCode</td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-secondary py-4">No movements recorded yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Movements", new { page = p, warehouseId = ViewBag.WarehouseId, productId = ViewBag.ProductId })">@p</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

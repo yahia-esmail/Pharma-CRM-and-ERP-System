@@ -1,0 +1,17 @@
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Application.deps.json
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Application.dll
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Application.pdb
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Domain.dll
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Shared.dll
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Domain.pdb
+F:\Projects\PharmaERP\src\Application\bin\Debug\net10.0\PharmaERP.Shared.pdb
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.csproj.AssemblyReference.cache
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.GeneratedMSBuildEditorConfig.editorconfig
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.AssemblyInfoInputs.cache
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.AssemblyInfo.cs
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.csproj.CoreCompileInputs.cache
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaER.BE218D50.Up2Date
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.dll
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\refint\PharmaERP.Application.dll
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\PharmaERP.Application.pdb
+F:\Projects\PharmaERP\src\Application\obj\Debug\net10.0\ref\PharmaERP.Application.dll

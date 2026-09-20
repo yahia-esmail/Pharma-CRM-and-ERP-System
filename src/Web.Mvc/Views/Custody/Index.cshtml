@@ -1,0 +1,220 @@
+@model CustodyIndexViewModel
+@{
+    ViewData["Title"] = "Stock Custody";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Stock Custody</h4>
+    <a asp-controller="Returns" asp-action="Index" asp-route-representativeId="@(Model.RepresentativeId == 0 ? (int?)null : Model.RepresentativeId)" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-return-left"></i> Returns
+    </a>
+</div>
+
+@if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager)
+     || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse))
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-4">
+                    <select name="representativeId" class="form-select" onchange="this.form.submit()" asp-items="Model.Representatives">
+                        <option value="">-- select representative --</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.RepresentativeId == 0)
+{
+    <div class="alert alert-info"><i class="bi bi-info-circle"></i> Select a representative to view their stock custody.</div>
+    return;
+}
+
+<h5 class="mb-3">@Model.RepresentativeName</h5>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Product</th><th>Batch</th><th>Expiry</th><th>Received</th><th>Sold</th><th>Returned</th><th>Balance</th></tr></thead>
+            <tbody>
+                @foreach (var b in Model.Balances)
+                {
+                    <tr>
+                        <td>@b.ProductName</td>
+                        <td>@b.BatchNumber</td>
+                        <td>@b.ExpiryDate?.ToString("yyyy-MM-dd")</td>
+                        <td>@b.Received</td>
+                        <td>@b.Sold</td>
+                        <td>@b.Returned</td>
+                        <td class="fw-semibold @(b.Balance < 0 ? "text-danger" : "")">@b.Balance</td>
+                    </tr>
+                }
+                @if (Model.Balances.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-secondary py-3">No custody activity yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.Reservations.Any(r => r.Reserved != 0))
+{
+    <div class="card mb-3">
+        <div class="card-header py-2"><small class="text-secondary"><i class="bi bi-bookmark-star"></i> Reserved by approved, not-yet-delivered orders (addendum 3.7)</small></div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Product</th><th>Balance</th><th>Reserved</th><th>Available to Sell</th></tr></thead>
+                <tbody>
+                    @foreach (var r in Model.Reservations.Where(r => r.Reserved != 0))
+                    {
+                        <tr>
+                            <td>@r.ProductName</td>
+                            <td>@r.Balance</td>
+                            <td class="text-warning">@r.Reserved</td>
+                            <td class="fw-semibold @(r.Available < 0 ? "text-danger" : "")">@r.Available</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ledger">Ledger (@Model.Ledger.Count)</button></li>
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse))
+    {
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#issue">Issue Stock</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#return">Direct Return (correction)</button></li>
+    }
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse))
+    {
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#transfer">Transfer</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#reconcile">Reconcile</button></li>
+    }
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="ledger">
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Type</th><th>Product</th><th>Batch</th><th>Qty</th><th>Reason / Ref</th></tr></thead>
+            <tbody>
+                @foreach (var t in Model.Ledger)
+                {
+                    <tr>
+                        <td>@t.TransactionDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><span class="badge bg-info status-badge">@t.TransactionType</span></td>
+                        <td>@t.ProductName</td>
+                        <td>@t.BatchNumber</td>
+                        <td class="@(t.Quantity < 0 ? "text-danger" : "text-success")">@t.Quantity</td>
+                        <td>@(t.ReasonCode ?? (t.SaleId != null ? $"Sale #{t.SaleId}" : t.SourceStockMovementId != null ? $"Movement #{t.SourceStockMovementId}" : ""))</td>
+                    </tr>
+                }
+                @if (Model.Ledger.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-3">No transactions yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse))
+    {
+        <div class="tab-pane fade" id="issue">
+            <form asp-action="Issue" method="post" class="row g-2">
+                <input type="hidden" asp-for="Issue.RepresentativeId" />
+                <div class="col-md-4">
+                    <label class="form-label">Warehouse</label>
+                    <select asp-for="Issue.WarehouseId" asp-items="Model.Warehouses" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Product</label>
+                    <select asp-for="Issue.ProductId" asp-items="Model.Products" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantity</label>
+                    <input asp-for="Issue.Quantity" type="number" class="form-control" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Issue</button>
+                </div>
+                <div class="col-12 text-secondary small"><i class="bi bi-info-circle"></i> Leave batch unspecified for a batch-tracked product to auto-select by FEFO.</div>
+            </form>
+        </div>
+    }
+
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Warehouse))
+    {
+        <div class="tab-pane fade" id="return">
+            <p class="text-secondary small"><i class="bi bi-info-circle"></i> Applies immediately, no approval step — for correcting the ledger directly. Representatives should use <a asp-controller="Returns" asp-action="Index" asp-route-representativeId="@Model.RepresentativeId">Returns</a> instead, which goes through approval.</p>
+            <form asp-action="Return" method="post" class="row g-2">
+                <input type="hidden" asp-for="Return.RepresentativeId" />
+                <div class="col-md-3">
+                    <label class="form-label">Warehouse</label>
+                    <select asp-for="Return.WarehouseId" asp-items="Model.Warehouses" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Product</label>
+                    <select asp-for="Return.ProductId" asp-items="Model.Products" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantity</label>
+                    <input asp-for="Return.Quantity" type="number" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Reason</label>
+                    <input asp-for="Return.ReasonCode" class="form-control" placeholder="Expired, Damaged, Unsold..." />
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Return</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="tab-pane fade" id="transfer">
+            <form asp-action="Transfer" method="post" class="row g-2">
+                <input type="hidden" asp-for="Transfer.FromRepresentativeId" />
+                <div class="col-md-3">
+                    <label class="form-label">To Representative</label>
+                    <select asp-for="Transfer.ToRepresentativeId" asp-items="Model.Representatives" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Product</label>
+                    <select asp-for="Transfer.ProductId" asp-items="Model.Products" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantity</label>
+                    <input asp-for="Transfer.Quantity" type="number" class="form-control" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Transfer</button>
+                </div>
+                <div class="col-12 text-secondary small"><i class="bi bi-info-circle"></i> For territory handover — logged as a paired out/in transaction for both representatives.</div>
+            </form>
+        </div>
+
+        <div class="tab-pane fade" id="reconcile">
+            <form asp-action="Reconcile" method="post" class="row g-2">
+                <input type="hidden" asp-for="Reconcile.RepresentativeId" />
+                <div class="col-md-4">
+                    <label class="form-label">Product</label>
+                    <select asp-for="Reconcile.ProductId" asp-items="Model.Products" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Counted Qty</label>
+                    <input asp-for="Reconcile.CountedBalance" type="number" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Notes</label>
+                    <input asp-for="Reconcile.Notes" class="form-control" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Reconcile</button>
+                </div>
+            </form>
+        </div>
+    }
+</div>

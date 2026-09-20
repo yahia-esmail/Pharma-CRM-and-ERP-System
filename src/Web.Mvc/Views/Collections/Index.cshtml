@@ -1,0 +1,241 @@
+@model FinancialCustodyIndexViewModel
+@{
+    ViewData["Title"] = "Financial Custody & Collections";
+}
+
+<h4 class="mb-3">Financial Custody &amp; Collections</h4>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Representative</th><th>Collected</th><th>Remitted</th><th>Outstanding</th><th>Oldest Unremitted</th></tr></thead>
+            <tbody>
+                @foreach (var s in Model.Summary)
+                {
+                    <tr style="cursor:pointer;" class="@(s.RepresentativeId == Model.RepresentativeId ? "table-active" : "")" onclick="location.href='@Url.Action("Index", new { representativeId = s.RepresentativeId })'">
+                        <td>@s.RepresentativeName</td>
+                        <td>@s.TotalCollected.ToString("C")</td>
+                        <td>@s.TotalRemitted.ToString("C")</td>
+                        <td class="fw-semibold @(s.OutstandingBalance > 0 ? "text-danger" : "")">@s.OutstandingBalance.ToString("C")</td>
+                        <td>@s.OldestUnremittedCollectionDateUtc?.ToString("yyyy-MM-dd")</td>
+                    </tr>
+                }
+                @if (Model.Summary.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-3">No representatives with collection activity.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.Selected is null)
+{
+    <div class="alert alert-info"><i class="bi bi-info-circle"></i> Select a representative above to view their collections and record activity.</div>
+    return;
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Collected</div><div class="kpi-value fs-5">@Model.Selected.TotalCollected.ToString("C")</div></div></div>
+    <div class="col-md-4"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Remitted</div><div class="kpi-value fs-5">@Model.Selected.TotalRemitted.ToString("C")</div></div></div>
+    <div class="col-md-4"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Outstanding</div><div class="kpi-value fs-5 @(Model.Selected.OutstandingBalance > 0 ? "text-danger" : "text-success")">@Model.Selected.OutstandingBalance.ToString("C")</div></div></div>
+</div>
+
+<ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#collections">Collections (@Model.Collections.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#remittances">Remittances (@Model.Remittances.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#reconciliations">Reconciliation (@Model.Reconciliations.Count)</button></li>
+    @if (User.IsInRole(Roles.Representative))
+    {
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#newcollection">Record Collection</button></li>
+    }
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Finance))
+    {
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#remit">Confirm Remittance</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#reconcile">Reconcile Cash</button></li>
+    }
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="collections">
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Pharmacy</th><th>Amount</th><th>Method</th><th>Reference</th><th>Proof of Payment</th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.Collections)
+                {
+                    <tr>
+                        <td>@c.CollectionDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@c.PharmacyName</td>
+                        <td>@c.Amount.ToString("C")</td>
+                        <td><span class="badge bg-info status-badge">@c.PaymentMethod</span></td>
+                        <td>@c.ReferenceNumber</td>
+                        <td>
+                            <a asp-action="Attachments" asp-route-collectionId="@c.Id" class="btn btn-sm @(c.AttachmentCount > 0 ? "btn-outline-secondary" : "btn-outline-secondary")">
+                                <i class="bi bi-paperclip"></i> @(c.AttachmentCount > 0 ? c.AttachmentCount.ToString() : "Attach")
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Collections.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-3">No collections yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="remittances">
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
+            <tbody>
+                @foreach (var r in Model.Remittances)
+                {
+                    <tr>
+                        <td>@r.RemittanceDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@r.Amount.ToString("C")</td>
+                        <td><span class="badge bg-success status-badge">@r.RemittanceMethod</span></td>
+                        <td>@r.ReferenceNumber</td>
+                    </tr>
+                }
+                @if (Model.Remittances.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-secondary py-3">No remittances yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="reconciliations">
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>System Balance</th><th>Counted</th><th>Variance</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var r in Model.Reconciliations)
+                {
+                    <tr>
+                        <td>@r.ReconciliationDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@r.SystemBalance.ToString("C")</td>
+                        <td>@r.CountedBalance.ToString("C")</td>
+                        <td class="@(r.Variance == 0 ? "" : r.Variance > 0 ? "text-success" : "text-danger")">@r.Variance.ToString("C")</td>
+                        <td>@r.Reason</td>
+                        <td>
+                            @{
+                                var reconBadge = r.Status switch
+                                {
+                                    PharmaERP.Domain.Enums.FinancialReconciliationStatus.Approved => "bg-success",
+                                    PharmaERP.Domain.Enums.FinancialReconciliationStatus.Rejected => "bg-danger",
+                                    _ => "bg-warning"
+                                };
+                            }
+                            <span class="badge @reconBadge status-badge">@r.Status</span>
+                            @if (r.Status == PharmaERP.Domain.Enums.FinancialReconciliationStatus.Rejected && !string.IsNullOrEmpty(r.RejectionReason))
+                            {
+                                <div class="text-secondary small">@r.RejectionReason</div>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (r.Status == PharmaERP.Domain.Enums.FinancialReconciliationStatus.Pending && (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Management) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager)))
+                            {
+                                <form asp-action="ApproveReconciliation" method="post" class="d-inline" onsubmit="return confirm('Approve this reconciliation? The variance will count toward the outstanding balance.');">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input type="hidden" name="representativeId" value="@Model.RepresentativeId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                                <form asp-action="RejectReconciliation" method="post" class="d-inline" onsubmit="return promptRejectRecon(this);">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input type="hidden" name="representativeId" value="@Model.RepresentativeId" />
+                                    <input type="hidden" name="reason" class="reject-recon-reason" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Reconciliations.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-secondary py-3">No reconciliations yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (User.IsInRole(Roles.Representative))
+    {
+        <div class="tab-pane fade" id="newcollection">
+            <form asp-action="AddCollection" method="post" class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label">Pharmacy</label>
+                    <select asp-for="NewCollection.PharmacyId" asp-items="Model.Pharmacies" class="form-select"><option value="">-- select --</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Amount</label>
+                    <input asp-for="NewCollection.Amount" type="number" step="0.01" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Method</label>
+                    <select asp-for="NewCollection.PaymentMethod" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.PaymentMethod>()" class="form-select"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Reference #</label>
+                    <input asp-for="NewCollection.ReferenceNumber" class="form-control" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Record</button>
+                </div>
+            </form>
+        </div>
+    }
+
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Finance))
+    {
+        <div class="tab-pane fade" id="remit">
+            <form asp-action="Remit" method="post" class="row g-2">
+                <input type="hidden" asp-for="NewRemittance.RepresentativeId" />
+                <div class="col-md-3">
+                    <label class="form-label">Amount</label>
+                    <input asp-for="NewRemittance.Amount" type="number" step="0.01" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Method</label>
+                    <select asp-for="NewRemittance.RemittanceMethod" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.PaymentMethod>()" class="form-select"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Reference #</label>
+                    <input asp-for="NewRemittance.ReferenceNumber" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Confirm Remittance</button>
+                </div>
+                <div class="col-12 text-secondary small"><i class="bi bi-info-circle"></i> Confirms funds were physically received from the representative — reduces their outstanding balance.</div>
+            </form>
+        </div>
+
+        <div class="tab-pane fade" id="reconcile">
+            <p class="text-secondary small"><i class="bi bi-info-circle"></i> Current system balance: <strong>@Model.Selected.OutstandingBalance.ToString("C")</strong>. A matching count needs no approval; a difference must be explained and stays pending until a manager approves it — the outstanding balance never changes until then.</p>
+            <form asp-action="RequestReconciliation" method="post" class="row g-2">
+                <input type="hidden" asp-for="NewReconciliation.RepresentativeId" />
+                <div class="col-md-3">
+                    <label class="form-label">Actual Cash Counted</label>
+                    <input asp-for="NewReconciliation.CountedBalance" type="number" step="0.01" class="form-control" />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Reason (required if it differs)</label>
+                    <input asp-for="NewReconciliation.Reason" class="form-control" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Reconcile</button>
+                </div>
+            </form>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function promptRejectRecon(form) {
+            const reason = prompt('Reason for rejecting this reconciliation:');
+            if (!reason) return false;
+            form.querySelector('.reject-recon-reason').value = reason;
+            return true;
+        }
+    </script>
+}

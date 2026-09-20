@@ -1,0 +1,74 @@
+@model RepresentativeDrilldownViewModel
+@{
+    ViewData["Title"] = Model.Drilldown.RepresentativeName;
+    var d = Model.Drilldown;
+    var monthName = new DateTime(d.Year, d.Month, 1).ToString("MMMM yyyy");
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h4 class="mb-0">@d.RepresentativeName</h4>
+        <div class="text-secondary">@d.TerritoryName &mdash; @monthName</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to District</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Sales This Month</div><div class="kpi-value fs-5">@d.SalesThisMonth.ToString("C")</div></div></div>
+    <div class="col-md-4"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Outstanding Custody</div><div class="kpi-value fs-5 @(d.OutstandingCustody > 0 ? "text-danger" : "")">@d.OutstandingCustody.ToString("C")</div></div></div>
+    <div class="col-md-4">
+        <div class="card kpi-tile p-3 text-center d-flex flex-column justify-content-center">
+            <a asp-controller="Custody" asp-action="Index" asp-route-representativeId="@d.RepresentativeId" class="btn btn-sm btn-outline-secondary mb-1"><i class="bi bi-clipboard-check"></i> Stock Custody</a>
+            <a asp-controller="Collections" asp-action="Index" asp-route-representativeId="@d.RepresentativeId" class="btn btn-sm btn-outline-secondary"><i class="bi bi-cash-coin"></i> Collections</a>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#doctors">Doctors (@d.Doctors.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pharmacies">Pharmacies (@d.Pharmacies.Count)</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="doctors">
+        <table class="table table-sm">
+            <thead><tr><th>Doctor</th><th>Visits This Month</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in d.Doctors)
+                {
+                    <tr>
+                        <td>@c.Name</td>
+                        <td>@c.VisitsThisMonth</td>
+                        <td class="text-end"><a asp-controller="Doctors" asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary">View <i class="bi bi-arrow-right"></i></a></td>
+                    </tr>
+                }
+                @if (d.Doctors.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-center text-secondary py-3">No doctors assigned.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="pharmacies">
+        <table class="table table-sm">
+            <thead><tr><th>Pharmacy</th><th>Visits This Month</th><th>Sales This Month</th><th>Outstanding</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in d.Pharmacies)
+                {
+                    <tr>
+                        <td>@c.Name</td>
+                        <td>@c.VisitsThisMonth</td>
+                        <td>@c.SalesThisMonth?.ToString("C")</td>
+                        <td class="@(c.OutstandingBalance > 0 ? "text-danger" : "")">@c.OutstandingBalance?.ToString("C")</td>
+                        <td class="text-end"><a asp-controller="Pharmacies" asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary">View <i class="bi bi-arrow-right"></i></a></td>
+                    </tr>
+                }
+                @if (d.Pharmacies.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-3">No pharmacies assigned.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

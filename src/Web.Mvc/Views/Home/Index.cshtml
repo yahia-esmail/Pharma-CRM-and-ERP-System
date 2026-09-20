@@ -1,0 +1,41 @@
+@{
+    ViewData["Title"] = "Welcome";
+}
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Welcome back, @User.Identity!.Name</h5>
+        <p class="card-text text-secondary">Jump straight to what you use most:</p>
+
+        <div class="d-flex flex-wrap gap-2">
+            @if (User.IsInRole(Roles.Representative))
+            {
+                <a asp-controller="VisitPlans" asp-action="Index" class="btn btn-outline-primary btn-sm">My Visit Plans</a>
+                <a asp-controller="Doctors" asp-action="Index" class="btn btn-outline-primary btn-sm">Doctors</a>
+                <a asp-controller="Pharmacies" asp-action="Index" class="btn btn-outline-primary btn-sm">Pharmacies</a>
+                <a asp-controller="Orders" asp-action="Index" class="btn btn-outline-primary btn-sm">Orders</a>
+                <a asp-controller="Custody" asp-action="Index" class="btn btn-outline-primary btn-sm">My Stock Custody</a>
+                <a asp-controller="Collections" asp-action="Index" class="btn btn-outline-primary btn-sm">My Collections</a>
+            }
+            @if (User.IsInRole(Roles.Warehouse))
+            {
+                <a asp-controller="Warehouses" asp-action="Index" class="btn btn-outline-primary btn-sm">Warehouses</a>
+                <a asp-controller="Warehouses" asp-action="Operations" class="btn btn-outline-primary btn-sm">Warehouse Operations</a>
+                <a asp-controller="Warehouses" asp-action="Reports" class="btn btn-outline-primary btn-sm">Inventory Alerts</a>
+                <a asp-controller="Custody" asp-action="Index" class="btn btn-outline-primary btn-sm">Stock Custody</a>
+            }
+            @if (User.IsInRole(Roles.Finance))
+            {
+                <a asp-controller="Collections" asp-action="Index" class="btn btn-outline-primary btn-sm">Financial Custody &amp; Collections</a>
+                <a asp-controller="Suppliers" asp-action="Index" class="btn btn-outline-primary btn-sm">Suppliers</a>
+                <a asp-controller="Sales" asp-action="Index" class="btn btn-outline-primary btn-sm">Sales History</a>
+            }
+            @if (User.IsInRole(Roles.Procurement))
+            {
+                <a asp-controller="Suppliers" asp-action="Index" class="btn btn-outline-primary btn-sm">Suppliers</a>
+                <a asp-controller="PurchaseOrders" asp-action="Index" class="btn btn-outline-primary btn-sm">Purchase Orders</a>
+                <a asp-controller="Products" asp-action="Index" class="btn btn-outline-primary btn-sm">Products</a>
+            }
+        </div>
+    </div>
+</div>

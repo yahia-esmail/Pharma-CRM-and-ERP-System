@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Application/">
+    <Project Path="src/Application/PharmaERP.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Domain/">
+    <Project Path="src/Domain/PharmaERP.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/PharmaERP.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/PharmaERP.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Web.Api/">
+    <Project Path="src/Web.Api/PharmaERP.Web.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Web.Mvc/">
+    <Project Path="src/Web.Mvc/PharmaERP.Web.Mvc.csproj" />
+  </Folder>
+</Solution>

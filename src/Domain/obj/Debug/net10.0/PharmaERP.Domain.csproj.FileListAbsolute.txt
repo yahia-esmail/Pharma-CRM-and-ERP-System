@@ -1,0 +1,11 @@
+F:\Projects\PharmaERP\src\Domain\bin\Debug\net10.0\PharmaERP.Domain.deps.json
+F:\Projects\PharmaERP\src\Domain\bin\Debug\net10.0\PharmaERP.Domain.dll
+F:\Projects\PharmaERP\src\Domain\bin\Debug\net10.0\PharmaERP.Domain.pdb
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\PharmaERP.Domain.GeneratedMSBuildEditorConfig.editorconfig
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\PharmaERP.Domain.AssemblyInfoInputs.cache
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\PharmaERP.Domain.AssemblyInfo.cs
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\PharmaERP.Domain.csproj.CoreCompileInputs.cache
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\PharmaERP.Domain.dll
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\refint\PharmaERP.Domain.dll
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\PharmaERP.Domain.pdb
+F:\Projects\PharmaERP\src\Domain\obj\Debug\net10.0\ref\PharmaERP.Domain.dll

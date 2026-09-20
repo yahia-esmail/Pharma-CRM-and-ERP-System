@@ -1,0 +1,206 @@
+@model PharmacyDetailsViewModel
+@{
+    ViewData["Title"] = Model.Pharmacy.Name;
+    var p = Model.Pharmacy;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h4 class="mb-0">@p.Name</h4>
+        <div class="text-secondary">@p.City, @p.Governorate &mdash; @p.Segment</div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative))
+        {
+            <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+            <a asp-controller="Orders" asp-action="Create" asp-route-pharmacyId="@p.Id" class="btn btn-primary btn-sm"><i class="bi bi-cart-plus"></i> New Order</a>
+        }
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+        {
+            <a asp-controller="Lists" asp-action="Transfer" asp-route-pharmacyId="@p.Id" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left-right"></i> Transfer</a>
+        }
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager))
+        {
+            <form asp-action="Deactivate" asp-route-id="@p.Id" method="post" onsubmit="return confirm('Deactivate this pharmacy?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle"></i> Deactivate</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Address</dt><dd class="col-sm-8">@p.Address</dd>
+                    <dt class="col-sm-4">Owner</dt><dd class="col-sm-8">@p.OwnerName</dd>
+                    <dt class="col-sm-4">License #</dt><dd class="col-sm-8">@p.LicenseNumber</dd>
+                    <dt class="col-sm-4">Phone</dt><dd class="col-sm-8">@p.Phone</dd>
+                    <dt class="col-sm-4">WhatsApp</dt><dd class="col-sm-8">@p.WhatsAppNumber</dd>
+                    <dt class="col-sm-4">Representative</dt><dd class="col-sm-8">@p.PrimaryRepresentativeName</dd>
+                    <dt class="col-sm-4">Territory</dt><dd class="col-sm-8">@p.TerritoryName</dd>
+                    <dt class="col-sm-4">Payment Terms</dt><dd class="col-sm-8">@p.PaymentTermDays days</dd>
+                    <dt class="col-sm-4">Credit Limit</dt><dd class="col-sm-8">@(p.CreditLimit > 0 ? p.CreditLimit.ToString("C") : "Unlimited")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-tile p-3 text-center">
+            <div class="kpi-label">Outstanding Balance</div>
+            <div class="kpi-value @(Model.Ledger.OutstandingBalance > 0 ? "text-danger" : "text-success")">@Model.Ledger.OutstandingBalance.ToString("C")</div>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs" id="pharmacyTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#visits">Visits (@Model.Visits.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#orders">Orders (@Model.Orders.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ledger">Statement</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="visits">
+        <form asp-action="AddVisit" method="post" class="row g-2 mb-3 border-bottom pb-3">
+            <input type="hidden" asp-for="NewVisit.PharmacyId" />
+            <input type="hidden" asp-for="NewVisit.CheckInLatitude" id="pharmacyCheckInLat" />
+            <input type="hidden" asp-for="NewVisit.CheckInLongitude" id="pharmacyCheckInLon" />
+            <div class="col-md-3">
+                <label class="form-label">Visit Date/Time</label>
+                <input asp-for="NewVisit.VisitDateUtc" type="datetime-local" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Duration (min)</label>
+                <input asp-for="NewVisit.DurationMinutes" type="number" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Purpose</label>
+                <select asp-for="NewVisit.Purpose" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.PharmacyVisitPurpose>()" class="form-select"></select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Notes</label>
+                <input asp-for="NewVisit.Notes" class="form-control" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="captureCheckIn('pharmacy')" title="Use my location for check-in"><i class="bi bi-geo-alt"></i></button>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> Log</button>
+            </div>
+            <div class="col-12"><small id="pharmacyCheckInStatus" class="text-secondary"></small></div>
+        </form>
+
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Representative</th><th>Purpose</th><th>Notes</th><th>Flags</th></tr></thead>
+            <tbody>
+                @foreach (var v in Model.Visits)
+                {
+                    <tr>
+                        <td>@v.VisitDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@v.RepresentativeName</td>
+                        <td>@v.Purpose</td>
+                        <td>@v.Notes</td>
+                        <td>
+                            @if (v.LocationMismatch) { <span class="badge bg-warning status-badge">Location Mismatch</span> }
+                            @if (v.OutsideTerritory) { <span class="badge bg-warning status-badge">Outside Territory</span> }
+                            @if (v.DurationTooShort) { <span class="badge bg-warning status-badge">Too Short</span> }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Visits.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-3">No visits logged yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="orders">
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Representative</th><th>Status</th><th>Total</th></tr></thead>
+            <tbody>
+                @foreach (var o in Model.Orders)
+                {
+                    <tr style="cursor:pointer;" onclick="location.href='@Url.Action("Details", "Orders", new { id = o.Id })'">
+                        <td>@o.OrderDateUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@o.RepresentativeName</td>
+                        <td>
+                            @{
+                                var orderBadge = o.Status switch
+                                {
+                                    PharmaERP.Domain.Enums.OrderStatus.Approved => "bg-info",
+                                    PharmaERP.Domain.Enums.OrderStatus.Delivered => "bg-success",
+                                    PharmaERP.Domain.Enums.OrderStatus.Rejected => "bg-danger",
+                                    PharmaERP.Domain.Enums.OrderStatus.Cancelled => "bg-danger",
+                                    PharmaERP.Domain.Enums.OrderStatus.Submitted => "bg-warning",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @orderBadge status-badge">@o.Status</span>
+                        </td>
+                        <td>@o.TotalAmount.ToString("C")</td>
+                    </tr>
+                }
+                @if (Model.Orders.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-secondary py-3">No orders yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="ledger">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3"><div class="card kpi-tile p-2 text-center"><div class="kpi-label">Total Sales</div><div class="kpi-value fs-5">@Model.Ledger.TotalSales.ToString("C")</div></div></div>
+            <div class="col-md-3"><div class="card kpi-tile p-2 text-center"><div class="kpi-label">0-30 Days</div><div class="kpi-value fs-5">@Model.Ledger.Aging0To30.ToString("C")</div></div></div>
+            <div class="col-md-3"><div class="card kpi-tile p-2 text-center"><div class="kpi-label">31-60 Days</div><div class="kpi-value fs-5 text-warning">@Model.Ledger.Aging31To60.ToString("C")</div></div></div>
+            <div class="col-md-3"><div class="card kpi-tile p-2 text-center"><div class="kpi-label">60+ Days</div><div class="kpi-value fs-5 text-danger">@Model.Ledger.Aging60Plus.ToString("C")</div></div></div>
+        </div>
+        <table class="table table-sm">
+            <thead><tr><th>Sale Date</th><th>Due Date</th><th>Amount</th><th>Days Overdue</th></tr></thead>
+            <tbody>
+                @foreach (var line in Model.Ledger.Lines)
+                {
+                    <tr>
+                        <td>@line.SaleDateUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@line.DueDateUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@line.Amount.ToString("C")</td>
+                        <td>
+                            @if (line.DaysOverdue > 0)
+                            {
+                                <span class="badge bg-danger status-badge">@line.DaysOverdue</span>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">&ndash;</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Ledger.Lines.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-secondary py-3">No sales recorded yet.</td></tr>
+                }
+            </tbody>
+        </table>
+        <p class="text-secondary small mb-0"><i class="bi bi-info-circle"></i> Collections tracking arrives in Phase 5 — "Total Collected" is 0 until then, so outstanding equals total sales.</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function captureCheckIn(prefix) {
+            const status = document.getElementById(prefix + 'CheckInStatus');
+            if (!navigator.geolocation) { status.textContent = 'Geolocation not supported by this browser.'; return; }
+            status.textContent = 'Locating…';
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    document.getElementById(prefix + 'CheckInLat').value = pos.coords.latitude;
+                    document.getElementById(prefix + 'CheckInLon').value = pos.coords.longitude;
+                    status.textContent = 'Location captured (±' + Math.round(pos.coords.accuracy) + 'm).';
+                },
+                err => { status.textContent = 'Could not get location: ' + err.message; });
+        }
+    </script>
+}

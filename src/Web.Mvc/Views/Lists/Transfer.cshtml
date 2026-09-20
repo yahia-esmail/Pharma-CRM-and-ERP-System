@@ -1,0 +1,42 @@
+@model CustomerTransferFormViewModel
+@{
+    ViewData["Title"] = "Transfer Customer";
+}
+<h4 class="mb-3">Transfer Customer</h4>
+<div class="card"><div class="card-body">
+    <p>Reassigning <strong>@Model.CustomerName</strong>
+        @if (!string.IsNullOrEmpty(Model.CurrentRepresentativeName))
+        {
+            <text>from <strong>@Model.CurrentRepresentativeName</strong></text>
+        }
+        else
+        {
+            <text>(currently unassigned)</text>
+        }
+        to a new representative. Past visits, orders, and collections stay attributed to whoever recorded them —
+        only future activity follows the new representative.</p>
+
+    <form asp-action="Transfer" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <input type="hidden" asp-for="DoctorId" />
+        <input type="hidden" asp-for="PharmacyId" />
+        <input type="hidden" asp-for="CustomerName" />
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ToRepresentativeId" class="form-label">New Representative</label>
+                <select asp-for="ToRepresentativeId" asp-items="Model.Representatives" class="form-select">
+                    <option value="">-- select --</option>
+                </select>
+                <span asp-validation-for="ToRepresentativeId" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Reason" class="form-label"></label>
+                <input asp-for="Reason" class="form-control" />
+            </div>
+        </div>
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-left-right"></i> Transfer</button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div></div>

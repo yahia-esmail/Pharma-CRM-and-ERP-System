@@ -1,0 +1,55 @@
+@model SaleTraceDto
+@{
+    ViewData["Title"] = $"Trace — Sale #{Model.SaleId}";
+}
+
+<h4 class="mb-1">Trace This Transaction</h4>
+<div class="text-secondary mb-3">Sale #@Model.SaleId &mdash; @Model.RepresentativeName &rarr; @Model.PharmacyName</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Sale Amount</div><div class="kpi-value fs-5">@Model.Amount.ToString("C")</div></div></div>
+    <div class="col-md-3"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Collected</div><div class="kpi-value fs-5">@Model.Collections.Sum(c => c.Amount).ToString("C")</div></div></div>
+    <div class="col-md-3"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Sale Date</div><div class="kpi-value fs-6">@Model.SaleDateUtc.ToString("yyyy-MM-dd")</div></div></div>
+    <div class="col-md-3"><div class="card kpi-tile p-3 text-center"><div class="kpi-label">Rep's Custody Outstanding</div><div class="kpi-value fs-5 @(Model.RepresentativeOutstandingCustody > 0 ? "text-danger" : "")">@Model.RepresentativeOutstandingCustody.ToString("C")</div></div></div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">Collections Against This Sale</h6>
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.Collections)
+                {
+                    <tr><td>@c.CollectionDateUtc.ToString("yyyy-MM-dd")</td><td>@c.Amount.ToString("C")</td><td>@c.PaymentMethod</td></tr>
+                }
+                @if (Model.Collections.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-center text-secondary py-2">Not yet collected.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h6 class="mb-2">Batches Consumed by This Sale</h6>
+@foreach (var batch in Model.ConsumedBatches)
+{
+    <div class="card mb-2">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <strong>@batch.ProductName</strong> &mdash; Batch @batch.BatchNumber
+                <span class="text-secondary">(expires @batch.ExpiryDate.ToString("yyyy-MM-dd"))</span>
+                @if (batch.Origins.Count > 0)
+                {
+                    <div class="text-secondary small">From: @string.Join(", ", batch.Origins.Select(o => o.SupplierName).Distinct())</div>
+                }
+            </div>
+            <a asp-action="Batch" asp-route-id="@batch.ProductBatchId" class="btn btn-sm btn-outline-primary">Full Batch Trace &rarr;</a>
+        </div>
+    </div>
+}
+@if (Model.ConsumedBatches.Count == 0)
+{
+    <p class="text-secondary">This sale's product lines weren't batch-tracked, or no custody deduction was recorded for this sale.</p>
+}

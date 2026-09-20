@@ -1,0 +1,54 @@
+@model IReadOnlyList<RepresentativeLocationDto>
+@{
+    ViewData["Title"] = "Representative Locations";
+}
+
+<h4 class="mb-3">Representative Locations &mdash; Today</h4>
+
+<div id="map" style="height: 520px; border-radius: 8px; border: 1px solid var(--pharma-border);"></div>
+
+<div class="card mt-3">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Representative</th><th>Last Seen</th><th>Source</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var loc in Model)
+                {
+                    <tr>
+                        <td>@loc.RepresentativeName</td>
+                        <td>@loc.TimestampUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td><span class="badge bg-info status-badge">@loc.Source</span></td>
+                        <td><a asp-action="Trail" asp-route-representativeId="@loc.RepresentativeId">View route</a></td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-secondary py-3">No location data recorded today.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const points = @Html.Raw(Json.Serialize(Model.Select(l => new { l.RepresentativeName, l.Latitude, l.Longitude, l.Source })));
+        const map = L.map('map').setView(points.length ? [points[0].Latitude, points[0].Longitude] : [30.0444, 31.2357], points.length ? 11 : 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const bounds = [];
+        points.forEach(p => {
+            const marker = L.marker([p.Latitude, p.Longitude]).addTo(map);
+            marker.bindPopup(`<strong>${p.RepresentativeName}</strong><br/>${p.Source}`);
+            bounds.push([p.Latitude, p.Longitude]);
+        });
+        if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
+    </script>
+}

@@ -1,0 +1,190 @@
+@model DoctorDetailsViewModel
+@{
+    ViewData["Title"] = Model.Doctor.FullName;
+    var d = Model.Doctor;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h4 class="mb-0">@d.FullName</h4>
+        <div class="text-secondary">@d.Specialty @(d.SubSpecialty is not null ? $"· {d.SubSpecialty}" : "") — @d.ClinicOrHospital</div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager) || User.IsInRole(Roles.Representative))
+        {
+            <a asp-action="Edit" asp-route-id="@d.Id" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        }
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager) || User.IsInRole(Roles.DistrictManager))
+        {
+            <a asp-controller="Lists" asp-action="Transfer" asp-route-doctorId="@d.Id" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left-right"></i> Transfer</a>
+        }
+        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.SalesManager))
+        {
+            <form asp-action="Deactivate" asp-route-id="@d.Id" method="post" onsubmit="return confirm('Deactivate this doctor?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle"></i> Deactivate</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Address</dt><dd class="col-sm-8">@d.Address, @d.City, @d.Governorate</dd>
+                    <dt class="col-sm-4">Phone</dt><dd class="col-sm-8">@d.Phone</dd>
+                    <dt class="col-sm-4">WhatsApp</dt><dd class="col-sm-8">@d.WhatsAppNumber</dd>
+                    <dt class="col-sm-4">Email</dt><dd class="col-sm-8">@d.Email</dd>
+                    <dt class="col-sm-4">Classification</dt><dd class="col-sm-8">@d.ClassificationName</dd>
+                    <dt class="col-sm-4">Primary Representative</dt><dd class="col-sm-8">@d.PrimaryRepresentativeName</dd>
+                    <dt class="col-sm-4">Territory</dt><dd class="col-sm-8">@d.TerritoryName</dd>
+                    <dt class="col-sm-4">Preferred Visiting</dt><dd class="col-sm-8">@d.PreferredVisitingDays @d.PreferredVisitingTimes</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-tile p-3 h-100 d-flex flex-column justify-content-center align-items-center">
+            @{
+                var badgeClass = d.Status switch
+                {
+                    PharmaERP.Domain.Enums.DoctorStatus.Active => "bg-success",
+                    PharmaERP.Domain.Enums.DoctorStatus.Prospect => "bg-info",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass status-badge fs-6">@d.Status</span>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs" id="doctorTabs" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#visits">Visit History (@Model.Visits.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#followups">Follow-Ups (@Model.FollowUps.Count(f => f.Status == PharmaERP.Domain.Enums.FollowUpStatus.Open))</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="visits">
+        <form asp-action="AddVisit" method="post" class="row g-2 mb-3 border-bottom pb-3" id="doctorVisitForm">
+            <input type="hidden" asp-for="NewVisit.DoctorId" />
+            <input type="hidden" asp-for="NewVisit.CheckInLatitude" id="doctorCheckInLat" />
+            <input type="hidden" asp-for="NewVisit.CheckInLongitude" id="doctorCheckInLon" />
+            <div class="col-md-3">
+                <label class="form-label">Visit Date/Time</label>
+                <input asp-for="NewVisit.VisitDateUtc" type="datetime-local" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Duration (min)</label>
+                <input asp-for="NewVisit.DurationMinutes" type="number" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Products Discussed</label>
+                <input asp-for="NewVisit.ProductsDiscussed" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Feedback Notes</label>
+                <input asp-for="NewVisit.FeedbackNotes" class="form-control" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="captureCheckIn('doctor')" title="Use my location for check-in"><i class="bi bi-geo-alt"></i></button>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Log Visit</button>
+                <small id="doctorCheckInStatus" class="text-secondary ms-2"></small>
+            </div>
+        </form>
+
+        <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Representative</th><th>Products</th><th>Feedback</th><th>Flags</th></tr></thead>
+            <tbody>
+                @foreach (var v in Model.Visits)
+                {
+                    <tr>
+                        <td>@v.VisitDateUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@v.RepresentativeName</td>
+                        <td>@v.ProductsDiscussed</td>
+                        <td>@v.FeedbackNotes</td>
+                        <td>
+                            @if (v.IsLocked) { <span class="badge bg-secondary status-badge">Locked</span> }
+                            @if (v.IsPlanned) { <span class="badge bg-info status-badge">Planned</span> } else { <span class="badge bg-light text-dark status-badge">Unplanned</span> }
+                            @if (v.LocationMismatch) { <span class="badge bg-warning status-badge">Location Mismatch</span> }
+                            @if (v.OutsideTerritory) { <span class="badge bg-warning status-badge">Outside Territory</span> }
+                            @if (v.DurationTooShort) { <span class="badge bg-warning status-badge">Too Short</span> }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Visits.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-3">No visits logged yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="followups">
+        <form asp-action="AddFollowUp" method="post" class="row g-2 mb-3 border-bottom pb-3">
+            <input type="hidden" asp-for="NewFollowUp.DoctorId" />
+            <div class="col-md-3">
+                <label class="form-label">Type</label>
+                <select asp-for="NewFollowUp.Type" asp-items="Html.GetEnumSelectList<PharmaERP.Domain.Enums.FollowUpType>()" class="form-select"></select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Due Date</label>
+                <input asp-for="NewFollowUp.DueDateUtc" type="date" class="form-control" />
+            </div>
+            <input type="hidden" asp-for="NewFollowUp.OwnerRepresentativeId" />
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Add Follow-Up</button>
+            </div>
+        </form>
+
+        <table class="table table-sm">
+            <thead><tr><th>Due</th><th>Type</th><th>Owner</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var f in Model.FollowUps)
+                {
+                    <tr>
+                        <td>@f.DueDateUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@f.Type</td>
+                        <td>@f.OwnerRepresentativeName</td>
+                        <td>
+                            <span class="badge @(f.Status == PharmaERP.Domain.Enums.FollowUpStatus.Open ? "bg-warning" : "bg-success") status-badge">@f.Status</span>
+                        </td>
+                        <td>
+                            @if (f.Status == PharmaERP.Domain.Enums.FollowUpStatus.Open)
+                            {
+                                <form asp-action="CloseFollowUp" method="post" class="d-inline">
+                                    <input type="hidden" name="followUpId" value="@f.Id" />
+                                    <input type="hidden" name="doctorId" value="@d.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Close</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.FollowUps.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-3">No follow-ups.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function captureCheckIn(prefix) {
+            const status = document.getElementById(prefix + 'CheckInStatus');
+            if (!navigator.geolocation) { status.textContent = 'Geolocation not supported by this browser.'; return; }
+            status.textContent = 'Locating…';
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    document.getElementById(prefix + 'CheckInLat').value = pos.coords.latitude;
+                    document.getElementById(prefix + 'CheckInLon').value = pos.coords.longitude;
+                    status.textContent = 'Location captured (±' + Math.round(pos.coords.accuracy) + 'm).';
+                },
+                err => { status.textContent = 'Could not get location: ' + err.message; });
+        }
+    </script>
+}

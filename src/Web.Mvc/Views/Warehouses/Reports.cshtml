@@ -1,0 +1,61 @@
+@{
+    ViewData["Title"] = "Inventory Alerts";
+    var nearExpiry = (IReadOnlyList<NearExpiryBatchDto>)ViewBag.NearExpiry;
+    var lowStock = (IReadOnlyList<LowStockProductDto>)ViewBag.LowStock;
+}
+
+<h4 class="mb-3">Inventory Alerts</h4>
+
+<ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#expiry">Near-Expiry (@nearExpiry.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#lowstock">Low Stock (@lowStock.Count)</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 p-3 bg-white">
+    <div class="tab-pane fade show active" id="expiry">
+        <table class="table table-sm">
+            <thead><tr><th>Product</th><th>Batch</th><th>Expiry</th><th>Days Left</th><th>Warehouse Qty</th><th>Custody Qty</th></tr></thead>
+            <tbody>
+                @foreach (var b in nearExpiry)
+                {
+                    <tr>
+                        <td>@b.ProductName</td>
+                        <td>@b.BatchNumber</td>
+                        <td>@b.ExpiryDate.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <span class="badge @(b.DaysUntilExpiry < 0 ? "bg-danger" : b.DaysUntilExpiry <= 30 ? "bg-warning" : "bg-info") status-badge">
+                                @(b.DaysUntilExpiry < 0 ? "Expired" : $"{b.DaysUntilExpiry}d")
+                            </span>
+                        </td>
+                        <td>@b.WarehouseQuantity</td>
+                        <td>@b.CustodyQuantity</td>
+                    </tr>
+                }
+                @if (nearExpiry.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-3">Nothing expiring soon.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="tab-pane fade" id="lowstock">
+        <table class="table table-sm">
+            <thead><tr><th>Product</th><th>SKU</th><th>Reorder Level</th><th>Current Qty</th></tr></thead>
+            <tbody>
+                @foreach (var p in lowStock)
+                {
+                    <tr>
+                        <td>@p.ProductName</td>
+                        <td>@p.Sku</td>
+                        <td>@p.ReorderLevel</td>
+                        <td class="text-danger fw-semibold">@p.TotalWarehouseQuantity</td>
+                    </tr>
+                }
+                @if (lowStock.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-secondary py-3">Nothing below reorder level.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
