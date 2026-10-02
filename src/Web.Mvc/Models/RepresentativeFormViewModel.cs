@@ -25,6 +25,11 @@ public class RepresentativeFormViewModel
     [EmailAddress]
     public string? Email { get; set; }
 
+    public string? ApplicationUserId { get; set; }
+
+    [DataType(DataType.Password), StringLength(100, MinimumLength = 8)]
+    public string? LoginPassword { get; set; }
+
     public IEnumerable<SelectListItem> Territories { get; set; } = [];
     public IEnumerable<SelectListItem> Managers { get; set; } = [];
 }

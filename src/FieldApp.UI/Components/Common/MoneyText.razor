@@ -1,0 +1,17 @@
+@* All amounts are EGP (plan 4.3); one component keeps the format identical on every screen. *@
+<span class="money @Class">@Format(Value)</span>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+
+    [Parameter] public decimal? Value { get; set; }
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string Format(decimal? value)
+    {
+        if (value is not { } v) return "—";
+        if (Compact && Math.Abs(v) >= 1000) return $"EGP {(v / 1000).ToString("0.#", Culture)}K";
+        return $"EGP {v.ToString("N0", Culture)}";
+    }
+}

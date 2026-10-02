@@ -7,7 +7,8 @@ using PharmaERP.Shared.Common;
 
 namespace PharmaERP.Application.Doctors;
 
-public class DoctorService(IAppDbContext db, ICurrentUserService currentUser, IVisitValidationService visitValidation) : IDoctorService
+public class DoctorService(IAppDbContext db, ICurrentUserService currentUser, IVisitValidationService visitValidation,
+    IBusinessCalendar calendar) : IDoctorService
 {
     /// <summary>Visit records become read-only after this window (spec 4.1) — later edits must be logged as amendments.</summary>
     private static readonly TimeSpan VisitEditWindow = TimeSpan.FromHours(48);
@@ -47,7 +48,7 @@ public class DoctorService(IAppDbContext db, ICurrentUserService currentUser, IV
                 d.Id, d.FullName, d.Specialty, d.City,
                 d.Classification != null ? d.Classification.Name : null,
                 d.PrimaryRepresentative != null ? d.PrimaryRepresentative.FullName : null,
-                d.Status))
+                d.Status, d.Latitude, d.Longitude))
             .ToListAsync(ct);
 
         return new PagedResult<DoctorListItemDto>
@@ -167,7 +168,7 @@ public class DoctorService(IAppDbContext db, ICurrentUserService currentUser, IV
             doctor.Latitude, doctor.Longitude, request.CheckInLatitude, request.CheckInLongitude,
             request.DurationMinutes, ct);
 
-        var visitDate = DateOnly.FromDateTime(request.VisitDateUtc);
+        var visitDate = calendar.DateOf(request.VisitDateUtc);
         int? visitPlanItemId;
         bool isPlanned;
 

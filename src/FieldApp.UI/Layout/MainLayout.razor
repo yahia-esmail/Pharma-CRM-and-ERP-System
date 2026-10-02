@@ -1,0 +1,94 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject BrowserDevice Device
+@inject SessionState Session
+@inject SyncLoop Sync
+@inject LocationTrackerRunner Tracking
+
+<div class="app-shell">
+    <header class="top-bar">
+        <div class="top-bar-title">
+            <span class="top-bar-app">Field CRM</span>
+            @if (Session.Profile?.TerritoryName is { } territory)
+            {
+                <span class="top-bar-sub">@territory</span>
+            }
+        </div>
+        <div class="top-bar-actions">
+            @if (_signedIn)
+            {
+                <SyncIndicator />
+                <GpsStatusBadge />
+            }
+            <span class="net-dot @(Device.IsOnline ? "online" : "offline")" title="@(Device.IsOnline ? "Online" : "Offline")"></span>
+        </div>
+    </header>
+
+    @if (!Device.IsOnline)
+    {
+        <div class="banner banner-offline" role="status">You're offline — showing saved data. Changes will sync when you reconnect.</div>
+    }
+    @if (_updateAvailable)
+    {
+        <div class="banner banner-update" role="status">
+            <span>A new version is available.</span>
+            <button class="btn btn-sm btn-light" @onclick="Device.ApplyUpdateAsync">Update</button>
+        </div>
+    }
+
+    <main class="app-content">
+        @Body
+    </main>
+
+    @* AuthorizeRouteView renders its NotAuthorized content inside this layout too (just before
+       RedirectToLogin fires), so anything that calls the API is gated on being signed in. *@
+    @if (_signedIn)
+    {
+        <BottomNav />
+    }
+</div>
+
+@code {
+    private bool _updateAvailable;
+    private bool _signedIn;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Device.Changed += OnNetworkChanged;
+        Device.UpdateAvailable += OnUpdateAvailable;
+        Session.Changed += OnSessionChanged;
+        await Device.StartAsync();
+
+        _signedIn = AuthState is not null && (await AuthState).User.Identity?.IsAuthenticated == true;
+        if (_signedIn)
+        {
+            Sync.Start();
+            await Tracking.StartAsync();
+            await Session.EnsureLoadedAsync();
+        }
+    }
+
+    private void OnNetworkChanged(bool online)
+    {
+        InvokeAsync(StateHasChanged);
+        if (online && _signedIn) _ = Session.RefreshProfileAsync();
+    }
+
+    // TODO(phase 6): hold the update back while a visit check-in is open (plan 10.2).
+    private void OnUpdateAvailable()
+    {
+        _updateAvailable = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSessionChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Device.Changed -= OnNetworkChanged;
+        Device.UpdateAvailable -= OnUpdateAvailable;
+        Session.Changed -= OnSessionChanged;
+    }
+}

@@ -1,0 +1,67 @@
+@using PharmaERP.Application.Products
+
+@* Search the offline catalogue and pick products; selected ones show as removable chips. *@
+<div class="product-picker">
+    @if (Selected.Count > 0)
+    {
+        <div class="chip-list">
+            @foreach (var id in Selected)
+            {
+                <span class="chip active">
+                    @Name(id)
+                    <button type="button" class="chip-remove" aria-label="Remove @Name(id)" @onclick="() => ToggleAsync(id)">×</button>
+                </span>
+            }
+        </div>
+    }
+    <input class="form-control" type="search" placeholder="@Placeholder" value="@_query" @oninput="e => _query = e.Value?.ToString()" />
+    @if (!string.IsNullOrWhiteSpace(_query))
+    {
+        <div class="picker-results">
+            @foreach (var p in Matches)
+            {
+                <button type="button" class="picker-row @(Selected.Contains(p.Id) ? "selected" : "")" @onclick="() => PickAsync(p)">
+                    <span>@p.Name</span>
+                    <span class="small text-secondary">@p.Sku</span>
+                </button>
+            }
+            @if (!Matches.Any())
+            {
+                <div class="small text-secondary p-2">No product matches "@_query".</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ProductListItemDto> Products { get; set; } = [];
+    [Parameter] public List<int> Selected { get; set; } = [];
+    [Parameter] public EventCallback SelectedChanged { get; set; }
+
+    /// <summary>When set, picking a product calls this instead of toggling selection (samples use it).</summary>
+    [Parameter] public EventCallback<ProductListItemDto> OnPick { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Search products…";
+
+    private string? _query;
+
+    private IEnumerable<ProductListItemDto> Matches => Products
+        .Where(p => p.Name.Contains(_query!.Trim(), StringComparison.OrdinalIgnoreCase)
+                    || p.Sku.Contains(_query.Trim(), StringComparison.OrdinalIgnoreCase))
+        .Take(8);
+
+    private string Name(int id) => Products.FirstOrDefault(p => p.Id == id)?.Name ?? $"#{id}";
+
+    private async Task PickAsync(ProductListItemDto product)
+    {
+        _query = null;
+        if (OnPick.HasDelegate) await OnPick.InvokeAsync(product);
+        else await ToggleAsync(product.Id);
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        if (!Selected.Remove(id)) Selected.Add(id);
+        await SelectedChanged.InvokeAsync();
+    }
+}

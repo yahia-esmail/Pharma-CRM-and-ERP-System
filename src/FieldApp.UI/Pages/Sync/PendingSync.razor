@@ -1,0 +1,98 @@
+@page "/sync"
+@implements IDisposable
+@inject Outbox Outbox
+@inject SyncLoop Sync
+@inject INetworkStatus Network
+
+<PageTitle>Pending sync · Field CRM</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="page-title mb-0">Pending sync</h1>
+    <button class="btn btn-sm btn-primary" @onclick="SyncNow" disabled="@(!Network.IsOnline)">Sync now</button>
+</div>
+
+@if (_items is null)
+{
+    <div class="card-skeleton"></div>
+}
+else if (_items.Count == 0)
+{
+    <EmptyState Title="All synced" Message="Everything you recorded has reached the server." />
+}
+else
+{
+    @foreach (var item in _items)
+    {
+        var waitingFor = item.DependsOn is { } parent ? _items.FirstOrDefault(i => i.Id == parent) : null;
+        <article class="app-card outbox-item @(item.Status == OutboxStatus.NeedsAttention ? "attention" : "")">
+            <div class="d-flex justify-content-between gap-2">
+                <strong>@item.Title</strong>
+                <span class="outbox-status">@StatusText(item, waitingFor)</span>
+            </div>
+            <div class="outbox-meta">Recorded @item.CreatedAtUtc.ToLocalTime().ToString("ddd HH:mm") · @item.Attempts attempt(s)</div>
+            @if (waitingFor is not null)
+            {
+                <div class="outbox-meta">Waiting for: @waitingFor.Title</div>
+            }
+            @if (item.LastError is { } error)
+            {
+                <div class="outbox-error">@error</div>
+            }
+
+            @if (item.Status == OutboxStatus.NeedsAttention)
+            {
+                <div class="d-flex gap-2 mt-2">
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => RetryAsync(item)">Try again</button>
+                    @if (_confirmDiscard == item.Id)
+                    {
+                        <button class="btn btn-sm btn-danger" @onclick="() => DiscardAsync(item)">Discard permanently</button>
+                        <button class="btn btn-sm btn-link" @onclick="() => _confirmDiscard = null">Cancel</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmDiscard = item.Id">Discard</button>
+                    }
+                </div>
+            }
+        </article>
+    }
+}
+
+@code {
+    private IReadOnlyList<OutboxItem>? _items;
+    private Guid? _confirmDiscard;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Outbox.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => _items = await Outbox.GetItemsAsync();
+
+    private static string StatusText(OutboxItem item, OutboxItem? waitingFor) => item.Status switch
+    {
+        OutboxStatus.NeedsAttention => "Needs attention",
+        _ when waitingFor is not null => "Queued",
+        _ when item.NextAttemptAtUtc is { } next && next > DateTime.UtcNow => $"Retry {next.ToLocalTime():HH:mm}",
+        _ => "Waiting to sync"
+    };
+
+    private void SyncNow() => Sync.Wake();
+
+    private async Task RetryAsync(OutboxItem item) => await Outbox.RetryAsync(item.Id);
+
+    private async Task DiscardAsync(OutboxItem item)
+    {
+        _confirmDiscard = null;
+        await Outbox.DiscardAsync(item.Id);
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Outbox.Changed -= OnChanged;
+}

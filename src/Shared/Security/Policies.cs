@@ -66,4 +66,7 @@ public static class Policies
     public const string ExpensesCreate = "Expenses.Create";
     public const string ExpensesApprove = "Expenses.Approve";
     public const string ExpensesReimburse = "Expenses.Reimburse";
+
+    /// <summary>Approve or reject customer locations proposed from the field (plan 7.9).</summary>
+    public const string LocationsReview = "Locations.Review";
 }

@@ -9,6 +9,7 @@ public interface IRepresentativeService
     Task<RepresentativeDetailDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<int> CreateAsync(RepresentativeSaveRequest request, CancellationToken ct = default);
     Task UpdateAsync(int id, RepresentativeSaveRequest request, CancellationToken ct = default);
+    Task LinkApplicationUserAsync(int id, string applicationUserId, CancellationToken ct = default);
     Task ReassignTerritoryAsync(int id, int? newTerritoryId, CancellationToken ct = default);
     Task DeactivateAsync(int id, CancellationToken ct = default);
 }

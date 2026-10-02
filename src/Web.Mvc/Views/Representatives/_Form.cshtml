@@ -45,6 +45,24 @@
     </div>
 </div>
 
+<hr class="my-3" />
+<h6>Login Access</h6>
+@if (!string.IsNullOrEmpty(Model.ApplicationUserId))
+{
+    <p class="text-muted mb-0"><i class="bi bi-check-circle text-success"></i> Already linked to a login account.</p>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="LoginPassword" class="form-label">Create login password</label>
+            <input asp-for="LoginPassword" type="password" class="form-control" autocomplete="new-password" />
+            <div class="form-text">Optional. Set a password to automatically create a website/mobile login for this representative using the email above. Leave blank to skip.</div>
+            <span asp-validation-for="LoginPassword" class="text-danger"></span>
+        </div>
+    </div>
+}
+
 <div class="mt-4 d-flex gap-2">
     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
     <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>

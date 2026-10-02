@@ -1,0 +1,31 @@
+@using PharmaERP.Domain.Enums
+
+@* Wireframe 9: Draft → Submitted → Approved → Delivered. Rejected / Cancelled replace the step they stopped at. *@
+<ol class="order-stepper" aria-label="Order progress">
+    @for (var i = 0; i < OrderStatusText.Steps.Length; i++)
+    {
+        var step = OrderStatusText.Steps[i];
+        var state = i < Reached ? "done" : i == Reached ? (Stopped ? "stopped" : "current") : "";
+        <li class="@state" aria-current="@(i == Reached ? "step" : null)">
+            <span class="dot">@(i < Reached ? "✓" : (i + 1).ToString())</span>
+            <span class="label">@(i == Reached && Stopped ? Status.ToString() : step.ToString())</span>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired] public OrderStatus Status { get; set; }
+
+    private bool Stopped => Status is OrderStatus.Rejected or OrderStatus.Cancelled;
+
+    // Rejected stops at "Approved"; Cancelled at the step after the last one reached (draft/submitted).
+    private int Reached => Status switch
+    {
+        OrderStatus.Draft => 0,
+        OrderStatus.Submitted => 1,
+        OrderStatus.Approved => 2,
+        OrderStatus.Delivered => 4,   // every step done
+        OrderStatus.Rejected => 2,
+        _ => 1
+    };
+}

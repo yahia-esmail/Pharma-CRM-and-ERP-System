@@ -43,6 +43,8 @@ public static class AuthorizationPolicies
 
         options.AddPolicy(Policies.LocationView, p => p.RequireRole(
             Roles.Admin, Roles.Management, Roles.SalesManager, Roles.DistrictManager));
+        options.AddPolicy(Policies.LocationsReview, p => p.RequireRole(
+            Roles.Admin, Roles.SalesManager, Roles.DistrictManager));
 
         // Matches the "Warehouses & Stock" row of the permissions matrix (spec 7) — Products is the
         // slice of that module pulled forward for Order lines ahead of full Inventory in Phase 4.

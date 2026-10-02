@@ -1,0 +1,13 @@
+# Build output
+bin/
+obj/
+*.user
+
+# IDE
+.vs/
+
+# Runtime data written by the apps — never commit (Data Protection keys are secrets; uploads are user files)
+.keys/
+.uploads/
+
+node_modules/

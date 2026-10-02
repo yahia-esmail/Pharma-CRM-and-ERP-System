@@ -1,0 +1,248 @@
+@page "/orders"
+@using PharmaERP.Application.Orders
+@using PharmaERP.Domain.Enums
+@implements IDisposable
+@inject OrdersStore Store
+@inject OrderEntryManager Orders
+@inject Outbox Outbox
+@inject INetworkStatus Network
+@inject NavigationManager Navigation
+
+<PageTitle>Orders · Field CRM</PageTitle>
+
+@*
+  Orders (wireframe 4): what's still on the phone (drafts, waiting to sync) first, then the server's list
+  with status filters. Edit applies to drafts, cancel to drafts and submitted orders.
+*@
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title mb-0">Orders</h1>
+        @if (_server is { } s)
+        {
+            <div class="small text-secondary">as of @s.SavedAtUtc.ToLocalTime().ToString("HH:mm")</div>
+        }
+    </div>
+    <a class="btn btn-primary" href="orders/new">+ New order</a>
+</div>
+
+@if (_refreshFailed && _server is not null)
+{
+    <div class="alert alert-warning py-2 small">Couldn't reach the server — showing the orders saved on this phone.</div>
+}
+
+<div class="filter-chips" role="tablist" aria-label="Order status">
+    @foreach (var (key, label) in Filters)
+    {
+        <button type="button" role="tab" aria-selected="@(_filter == key ? "true" : "false")"
+                class="chip @(_filter == key ? "active" : "")" @onclick="() => _filter = key">
+            @label
+            @if (Count(key) is > 0 and var n)
+            {
+                <span class="chip-count">@n</span>
+            }
+        </button>
+    }
+</div>
+
+@if (_loading)
+{
+    <div class="card-skeleton"></div>
+}
+else
+{
+    @if (_filter is null or OrderStatus.Draft && (_drafts.Count > 0 || _pending.Count > 0))
+    {
+        <h2 class="section-label">On this phone</h2>
+        @foreach (var d in _drafts)
+        {
+            <article class="app-card order-card local">
+                <div class="order-head">
+                    <div>
+                        <strong>@(string.IsNullOrEmpty(d.PharmacyName) ? "No pharmacy yet" : d.PharmacyName)</strong>
+                        <div class="order-meta">@(d.ServerId is { } sid ? $"Order #{sid} · " : "")@d.Lines.Count line(s) · edited @d.UpdatedAtUtc.ToLocalTime().ToString("HH:mm")</div>
+                    </div>
+                    <div class="text-end">
+                        <MoneyText Value="d.Totals.Net" Class="fw-semibold" />
+                        <span class="order-status local">Not sent</span>
+                    </div>
+                </div>
+                <div class="order-actions">
+                    <a class="btn btn-sm btn-outline-primary" href="orders/draft/@d.LocalId">Continue</a>
+                    <button class="btn btn-sm btn-link text-danger" @onclick="() => Orders.DiscardLocalAsync(d.LocalId)">Discard</button>
+                </div>
+            </article>
+        }
+        @foreach (var p in _pending)
+        {
+            var item = _outboxItems.FirstOrDefault(i => i.Id == p.OutboxId);
+            var attention = item?.Status == OutboxStatus.NeedsAttention;
+            <article class="app-card order-card local @(attention ? "attention" : "")">
+                <div class="order-head">
+                    <div>
+                        <strong>@p.PharmacyName</strong>
+                        <div class="order-meta">@(p.ServerId is { } sid ? $"Order #{sid} · " : "")@p.LineCount line(s) · @(p.Submitted ? "submitted" : "draft") @p.QueuedAtUtc.ToLocalTime().ToString("HH:mm")</div>
+                    </div>
+                    <div class="text-end">
+                        <MoneyText Value="p.Net" Class="fw-semibold" />
+                        <span class="order-status @(attention ? "rejected" : "local")">@(attention ? "Needs attention" : "Waiting to sync")</span>
+                    </div>
+                </div>
+                @if (attention && item?.LastError is { } error)
+                {
+                    <div class="order-reason">@error</div>
+                }
+                @if (item is not null && OrderEntryManager.CanReopen(item))
+                {
+                    <div class="order-actions">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ReopenAsync(p.LocalId)">@(attention ? "Fix & resend" : "Edit")</button>
+                    </div>
+                }
+            </article>
+        }
+        <h2 class="section-label">On the server</h2>
+    }
+
+    @if (_server is null)
+    {
+        <EmptyState Title="Orders not downloaded yet" Message="Connect to the internet to see your orders." />
+    }
+    else if (!Visible.Any())
+    {
+        <EmptyState Title="@(_filter is null ? "No orders yet" : $"No {_filter.ToString()!.ToLowerInvariant()} orders")"
+                    Message="Orders you take appear here with their approval status." />
+    }
+    else
+    {
+        @foreach (var o in Visible)
+        {
+            var cancelling = _pendingCancels.Contains(o.Id);
+            <article class="app-card order-card">
+                <div class="order-head">
+                    <div>
+                        <strong>@o.PharmacyName</strong>
+                        <div class="order-meta">#@o.Id · @o.OrderDateUtc.ToLocalTime().ToString("dd MMM HH:mm") · @o.LineCount line(s)</div>
+                    </div>
+                    <div class="text-end">
+                        <MoneyText Value="o.TotalAmount" Class="fw-semibold" />
+                        @if (cancelling)
+                        {
+                            <span class="order-status local">Cancelling…</span>
+                        }
+                        else
+                        {
+                            <OrderStatusBadge Status="o.Status" />
+                        }
+                    </div>
+                </div>
+                @if (o.Status == OrderStatus.Rejected && !string.IsNullOrWhiteSpace(o.RejectionReason))
+                {
+                    <div class="order-reason">Rejected: @o.RejectionReason</div>
+                }
+                @if (!cancelling && (OrderStatusText.CanEdit(o.Status) || OrderStatusText.CanCancel(o.Status)))
+                {
+                    <div class="order-actions">
+                        @if (OrderStatusText.CanEdit(o.Status))
+                        {
+                            <a class="btn btn-sm btn-outline-primary" href="orders/@o.Id/edit">Edit</a>
+                        }
+                        @if (_confirmCancel == o.Id)
+                        {
+                            <button class="btn btn-sm btn-danger" @onclick="() => CancelAsync(o)">Yes, cancel order</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmCancel = null">Keep</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-link text-danger" @onclick="() => _confirmCancel = o.Id">Cancel</button>
+                        }
+                    </div>
+                }
+            </article>
+        }
+    }
+}
+
+@code {
+    private static readonly (OrderStatus? Key, string Label)[] Filters =
+    [
+        (null, "All"), (OrderStatus.Draft, "Draft"), (OrderStatus.Submitted, "Submitted"), (OrderStatus.Approved, "Approved"),
+        (OrderStatus.Rejected, "Rejected"), (OrderStatus.Delivered, "Delivered"), (OrderStatus.Cancelled, "Cancelled")
+    ];
+
+    [SupplyParameterFromQuery(Name = "status")] public string? StatusQuery { get; set; }
+
+    private bool _loading = true;
+    private bool _refreshFailed;
+    private OrderStatus? _filter;
+    private Cached<IReadOnlyList<OrderListItemDto>>? _server;
+    private IReadOnlyList<OrderDraft> _drafts = [];
+    private IReadOnlyList<PendingOrder> _pending = [];
+    private IReadOnlyList<OutboxItem> _outboxItems = [];
+    private IReadOnlySet<int> _pendingCancels = new HashSet<int>();
+    private int? _confirmCancel;
+
+    private IEnumerable<OrderListItemDto> Visible =>
+        (_server?.Data ?? []).Where(o => _filter is null || o.Status == _filter);
+
+    private int Count(OrderStatus? key) => key switch
+    {
+        null => 0,
+        OrderStatus.Draft => (_server?.Data.Count(o => o.Status == key) ?? 0) + _drafts.Count + _pending.Count,
+        _ => _server?.Data.Count(o => o.Status == key) ?? 0
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Enum.TryParse<OrderStatus>(StatusQuery, ignoreCase: true, out var s)) _filter = s;
+        Orders.Changed += OnLocalChanged;
+        Outbox.Changed += OnLocalChanged;
+
+        _server = await Store.GetCachedAsync();
+        await LoadLocalAsync();
+        _loading = false;
+        StateHasChanged();
+
+        if (Network.IsOnline) await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var fresh = await Store.RefreshAsync();
+        _refreshFailed = fresh is null;
+        _server = fresh ?? _server;
+    }
+
+    private async Task LoadLocalAsync()
+    {
+        _drafts = await Orders.GetDraftsAsync();
+        _pending = await Orders.GetPendingAsync();
+        _outboxItems = await Outbox.GetItemsAsync();
+        _pendingCancels = await Orders.GetPendingCancelsAsync();
+    }
+
+    private async Task ReopenAsync(Guid localId)
+    {
+        if (await Orders.ReopenPendingAsync(localId) is { } draft)
+            Navigation.NavigateTo($"orders/draft/{draft.LocalId}");
+    }
+
+    private async Task CancelAsync(OrderListItemDto order)
+    {
+        _confirmCancel = null;
+        await Orders.CancelAsync(order.Id, order.PharmacyName);
+    }
+
+    private void OnLocalChanged() => _ = InvokeAsync(async () =>
+    {
+        var hadPending = _pending.Count + _pendingCancels.Count;
+        await LoadLocalAsync();
+        // Something just reached the server: pick up its real status.
+        if (_pending.Count + _pendingCancels.Count < hadPending && Network.IsOnline) await RefreshAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Orders.Changed -= OnLocalChanged;
+        Outbox.Changed -= OnLocalChanged;
+    }
+}

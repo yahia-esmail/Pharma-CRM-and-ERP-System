@@ -1,0 +1,132 @@
+@using Microsoft.Extensions.Options
+@using PharmaERP.FieldApp.UI.Services
+@inject VisitSessionManager Visits
+@inject IOptions<GpsOptions> Gps
+
+@*
+  Check-in (wireframes 7 & 8, plan 7.6): take a Best-of-N fix, compare it with the customer's location,
+  and check in. Being outside the geofence never blocks the rep — blocking only pushes people to fake
+  their location — but it does require a reason, which goes to the manager with the visit. A customer
+  without coordinates gets them from this fix (plan 7.9).
+*@
+<section class="app-card checkin-panel">
+    @switch (_step)
+    {
+        case Step.Locate:
+            <h2 class="card-heading">Check in</h2>
+            <p class="small text-secondary">Your location is recorded with the visit and checked against the customer's.</p>
+            <LocationCapture ButtonText="Get my location & check in" OnCaptured="OnFixAsync" OnFailed="OnFixFailed" />
+            @if (_fixFailed)
+            {
+                <button class="btn btn-link btn-sm mt-2 px-0" @onclick="() => _step = Step.NoLocation">Check in without location</button>
+            }
+            break;
+
+        case Step.Confirm:
+            <h2 class="card-heading">Confirm check-in</h2>
+            <FixSummary Fix="_fix" Geofence="_geofence" ShowDetails />
+
+            @if (_geofence!.Status == GeofenceStatus.NoTargetLocation)
+            {
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="saveLocation" @bind="_saveLocation" />
+                    <label class="form-check-label" for="saveLocation">
+                        Save my position as this customer's location
+                        <span class="d-block small text-secondary">
+                            @(_fix!.AccuracyMeters <= VisitSessionManager.AutoApplyLocationMaxAccuracyMeters
+                                ? "Accurate fix — it will be used straight away."
+                                : $"±{_fix.AccuracyMeters:0} m — a manager will review it first.")
+                        </span>
+                    </label>
+                </div>
+            }
+            else if (_geofence.Status != GeofenceStatus.Inside)
+            {
+                <ReasonPicker @bind-Value="_reason" Prompt="You seem to be outside this customer's location. Why?" />
+                <button class="btn btn-sm btn-outline-secondary mt-2" @onclick="Retry">Try location again</button>
+            }
+
+            <button class="btn btn-primary w-100 mt-3" @onclick="CheckInAsync" disabled="@(!CanCheckIn || _busy)">Check in now</button>
+            break;
+
+        case Step.NoLocation:
+            <h2 class="card-heading">Check in without location</h2>
+            <p class="small text-secondary">The visit is recorded, flagged for your manager with the reason you give.</p>
+            <ReasonPicker @bind-Value="_reason" Prompt="Why is there no location?" />
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary" @onclick="Retry">Try again</button>
+                <button class="btn btn-primary flex-fill" @onclick="CheckInAsync" disabled="@(!CanCheckIn || _busy)">Check in</button>
+            </div>
+            break;
+    }
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger py-2 small mt-2 mb-0">@_error</div>
+    }
+</section>
+
+@code {
+    private enum Step { Locate, Confirm, NoLocation }
+
+    [Parameter, EditorRequired] public VisitTarget Target { get; set; } = null!;
+    [Parameter] public EventCallback<OpenVisit> OnCheckedIn { get; set; }
+
+    private Step _step = Step.Locate;
+    private GeoFix? _fix;
+    private GeofenceResult? _geofence;
+    private string? _reason;
+    private bool _saveLocation = true;
+    private bool _fixFailed;
+    private bool _busy;
+    private string? _error;
+
+    private bool NeedsReason => _step == Step.NoLocation
+        || _geofence?.Status is GeofenceStatus.Outside or GeofenceStatus.Uncertain;
+
+    private bool CanCheckIn => !NeedsReason || !string.IsNullOrWhiteSpace(_reason);
+
+    private async Task OnFixAsync(GeoFix fix)
+    {
+        _fix = fix;
+        _geofence = Geofence.Evaluate(fix, Target.Latitude, Target.Longitude, Target.GeofenceRadiusMeters);
+        _saveLocation = fix.AccuracyMeters <= Gps.Value.MaxAcceptedAccuracyMeters;
+        _step = Step.Confirm;
+        // Clearly inside: nothing to decide, so don't make the rep tap twice.
+        if (_geofence.Status == GeofenceStatus.Inside) await CheckInAsync();
+    }
+
+    private void OnFixFailed(GeoFixResult _) => _fixFailed = true;
+
+    private void Retry()
+    {
+        _step = Step.Locate;
+        _fix = null;
+        _geofence = null;
+        _reason = null;
+        _fixFailed = false;
+    }
+
+    private async Task CheckInAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var fix = _step == Step.NoLocation ? null : _fix;
+            if (fix is not null && _geofence?.Status == GeofenceStatus.NoTargetLocation && _saveLocation)
+                await Visits.ProposeLocationAsync(Target.Kind, Target.Id, Target.Name, fix, customerHasLocation: false);
+
+            var open = await Visits.CheckInAsync(Target.Kind, Target.Id, Target.Name, Target.PlanItemId, fix,
+                fix is null ? null : _geofence, NeedsReason ? _reason : null);
+            await OnCheckedIn.InvokeAsync(open);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

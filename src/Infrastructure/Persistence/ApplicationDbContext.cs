@@ -50,6 +50,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<CustomerLocationProposal> CustomerLocationProposals => Set<CustomerLocationProposal>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

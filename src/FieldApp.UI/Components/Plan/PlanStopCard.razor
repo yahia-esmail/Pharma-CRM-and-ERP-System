@@ -1,0 +1,60 @@
+@* One stop on Today's Plan: order, customer, status, distance, and the two actions a rep needs —
+   start the visit, or get directions. *@
+<article class="app-card stop-card @Stop.Status.ToString().ToLowerInvariant()">
+    <div class="stop-head">
+        <span class="stop-seq">@Stop.Item.Sequence</span>
+        <div class="stop-main">
+            <div class="stop-title">
+                <strong>@Stop.Name</strong>
+                <StopStatusBadge Stop="Stop" />
+            </div>
+            <div class="stop-meta">
+                <span class="kind-chip @Stop.Kind.ToString().ToLowerInvariant()">@Stop.Kind</span>
+                @if (Detail is { } detail)
+                {
+                    <span>@detail</span>
+                }
+            </div>
+            @if (Place is { } place)
+            {
+                <div class="stop-meta">@place</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Stop.Item.Notes))
+            {
+                <div class="stop-notes">@Stop.Item.Notes</div>
+            }
+        </div>
+        <div class="stop-distance">
+            @if (Stop.DistanceMeters is { } d)
+            {
+                <span class="fw-semibold">@GeoMath.FormatDistance(d)</span>
+            }
+            else if (!Stop.HasLocation)
+            {
+                <span class="text-warning small" title="This customer has no saved location yet">no location</span>
+            }
+        </div>
+    </div>
+
+    @if (Stop.Status != StopStatus.Done)
+    {
+        <div class="stop-actions">
+            <a class="btn btn-sm @(Stop.Status == StopStatus.Next ? "btn-primary" : "btn-outline-primary")" href="@Stop.VisitUrl">Start visit</a>
+            @if (Stop.HasLocation)
+            {
+                <a class="btn btn-sm btn-outline-secondary" href="@PlanLogic.DirectionsUrl(Stop.Item.Latitude!.Value, Stop.Item.Longitude!.Value)"
+                   target="_blank" rel="noopener">Directions</a>
+            }
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired] public PlanStop Stop { get; set; } = null!;
+
+    private string? Detail => string.Join(" · ", new[] { Stop.Item.Specialty, Stop.Item.ClassificationName }
+        .Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } s ? s : null;
+
+    private string? Place => string.Join(", ", new[] { Stop.Item.Address, Stop.Item.City }
+        .Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } s ? s : null;
+}

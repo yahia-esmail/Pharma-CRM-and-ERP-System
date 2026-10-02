@@ -3,8 +3,17 @@
   <Folder Name="/src/Application/">
     <Project Path="src/Application/PharmaERP.Application.csproj" />
   </Folder>
+  <Folder Name="/src/Contracts/">
+    <Project Path="src/Contracts/PharmaERP.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Domain/">
     <Project Path="src/Domain/PharmaERP.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/FieldApp.UI/">
+    <Project Path="src/FieldApp.UI/PharmaERP.FieldApp.UI.csproj" />
+  </Folder>
+  <Folder Name="/src/FieldApp/">
+    <Project Path="src/FieldApp/PharmaERP.FieldApp.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/PharmaERP.Infrastructure.csproj" />
@@ -17,5 +26,9 @@
   </Folder>
   <Folder Name="/src/Web.Mvc/">
     <Project Path="src/Web.Mvc/PharmaERP.Web.Mvc.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Application.Tests/PharmaERP.Application.Tests.csproj" />
+    <Project Path="tests/FieldApp.UI.Tests/PharmaERP.FieldApp.UI.Tests.csproj" />
   </Folder>
 </Solution>

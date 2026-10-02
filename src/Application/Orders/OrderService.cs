@@ -11,11 +11,16 @@ using PharmaERP.Shared.Security;
 namespace PharmaERP.Application.Orders;
 
 public class OrderService(IAppDbContext db, ICustodyService custodyService, INotificationService notificationService,
-    IUserDirectoryService userDirectory) : IOrderService
+    IUserDirectoryService userDirectory, ICurrentUserService currentUser) : IOrderService
 {
+    private const int MaxLinesPerOrder = 200;
+
     public async Task<PagedResult<OrderListItemDto>> GetListAsync(PagedRequest request, int? pharmacyId,
         int? representativeId, OrderStatus? status, CancellationToken ct = default)
     {
+        // A representative only ever lists their own orders, whatever the caller passed.
+        if (CallerIsRepresentativeOnly) representativeId = currentUser.RepresentativeId ?? -1;
+
         var query = db.Orders.AsNoTracking().Where(o => !o.IsDeleted);
 
         if (pharmacyId.HasValue) query = query.Where(o => o.PharmacyId == pharmacyId);
@@ -30,7 +35,8 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
             .Take(request.PageSize)
             .Select(o => new OrderListItemDto(o.Id, o.PharmacyId, o.Pharmacy.Name, o.RepresentativeId,
                 o.Representative.FullName, o.OrderDateUtc, o.Status,
-                o.Lines.Sum(l => (decimal?)l.Quantity * l.UnitPrice * (1 - l.DiscountPercent / 100m)) ?? 0m))
+                o.Lines.Where(l => !l.IsDeleted).Sum(l => (decimal?)l.Quantity * l.UnitPrice * (1 - l.DiscountPercent / 100m)) ?? 0m,
+                o.RejectionReason, o.Lines.Count(l => !l.IsDeleted)))
             .ToListAsync(ct);
 
         return new PagedResult<OrderListItemDto>
@@ -49,8 +55,90 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
             .Include(o => o.Sale)
             .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Order), id);
+        EnsureCallerMayAccess(order);
 
         return ToDetailDto(order);
+    }
+
+    public async Task<int> SaveDraftAsync(int representativeId, int? orderId, OrderSaveRequest request,
+        CancellationToken ct = default)
+    {
+        var pharmacyExists = await db.Pharmacies.AnyAsync(p => p.Id == request.PharmacyId && !p.IsDeleted, ct);
+        if (!pharmacyExists) throw new NotFoundException(nameof(Pharmacy), request.PharmacyId);
+
+        var lines = request.Lines ?? [];
+        if (lines.Count > MaxLinesPerOrder)
+            throw new ValidationFailedException($"An order can have at most {MaxLinesPerOrder} lines.");
+        if (request.Submit && lines.Count == 0)
+            throw new ValidationFailedException("Add at least one order line before submitting.");
+        foreach (var line in lines) ValidateLine(line);
+
+        var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+        var prices = await db.Products.AsNoTracking()
+            .Where(p => productIds.Contains(p.Id) && !p.IsDeleted)
+            .ToDictionaryAsync(p => p.Id, p => p.UnitPrice, ct);
+        if (productIds.FirstOrDefault(pid => !prices.ContainsKey(pid)) is var missing and > 0)
+            throw new NotFoundException(nameof(Product), missing);
+
+        if (request.PharmacyVisitId is { } visitId)
+        {
+            var visit = await db.PharmacyVisits.AsNoTracking().Where(v => v.Id == visitId)
+                .Select(v => new { v.RepresentativeId, v.PharmacyId })
+                .FirstOrDefaultAsync(ct) ?? throw new NotFoundException(nameof(PharmacyVisit), visitId);
+            if (visit.RepresentativeId != representativeId) throw new ForbiddenAccessException();
+            if (visit.PharmacyId != request.PharmacyId)
+                throw new ValidationFailedException("The visit linked to this order is at a different pharmacy.");
+        }
+
+        Order order;
+        if (orderId is { } id)
+        {
+            order = await db.Orders.Include(o => o.Lines.Where(l => !l.IsDeleted))
+                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct)
+                ?? throw new NotFoundException(nameof(Order), id);
+            if (order.RepresentativeId != representativeId) throw new ForbiddenAccessException();
+            if (order.Status != OrderStatus.Draft)
+                throw new ValidationFailedException("Only a draft order can be edited.");
+            foreach (var existing in order.Lines) existing.IsDeleted = true;
+        }
+        else
+        {
+            order = new Order { RepresentativeId = representativeId, OrderDateUtc = DateTime.UtcNow, Status = OrderStatus.Draft };
+            db.Orders.Add(order);
+        }
+
+        order.PharmacyId = request.PharmacyId;
+        order.PharmacyVisitId = request.PharmacyVisitId ?? order.PharmacyVisitId;
+        foreach (var line in lines)
+        {
+            db.OrderLines.Add(new OrderLine
+            {
+                Order = order,
+                ProductId = line.ProductId,
+                Quantity = line.Quantity,
+                BonusQuantity = line.BonusQuantity,
+                UnitPrice = prices[line.ProductId], // server-controlled snapshot — never trusts a client-supplied price
+                DiscountPercent = line.DiscountPercent
+            });
+        }
+
+        if (request.Submit)
+        {
+            order.Status = OrderStatus.Submitted;
+            order.SubmittedAtUtc = DateTime.UtcNow;
+            if (request.Location is { } fix)
+            {
+                if (double.IsNaN(fix.Latitude) || fix.Latitude is < -90 or > 90 || double.IsNaN(fix.Longitude) || fix.Longitude is < -180 or > 180)
+                    throw new ValidationFailedException("Location coordinates are out of range.");
+                order.SubmitLatitude = fix.Latitude;
+                order.SubmitLongitude = fix.Longitude;
+                order.SubmitAccuracyMeters = fix.AccuracyMeters is >= 0 ? fix.AccuracyMeters : null;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);   // header, lines and status together, or nothing
+        if (request.Submit) await NotifyOrderAwaitingApprovalAsync(order, ct);
+        return order.Id;
     }
 
     public async Task<int> CreateDraftAsync(int representativeId, OrderCreateRequest request, CancellationToken ct = default)
@@ -87,11 +175,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
 
         var product = await db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == request.ProductId && !p.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Product), request.ProductId);
-
-        if (request.Quantity <= 0)
-            throw new ValidationFailedException("Quantity must be greater than zero.");
-        if (request.BonusQuantity < 0)
-            throw new ValidationFailedException("Bonus quantity cannot be negative.");
+        ValidateLine(request);
 
         var line = new OrderLine
         {
@@ -113,11 +197,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
 
         var line = await db.OrderLines.FirstOrDefaultAsync(l => l.Id == lineId && l.OrderId == orderId && !l.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(OrderLine), lineId);
-
-        if (request.Quantity <= 0)
-            throw new ValidationFailedException("Quantity must be greater than zero.");
-        if (request.BonusQuantity < 0)
-            throw new ValidationFailedException("Bonus quantity cannot be negative.");
+        ValidateLine(request);
 
         if (line.ProductId != request.ProductId)
         {
@@ -149,6 +229,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
         var order = await db.Orders.Include(o => o.Lines.Where(l => !l.IsDeleted))
             .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Order), orderId);
+        EnsureCallerMayAccess(order);
 
         if (order.Status != OrderStatus.Draft)
             throw new ValidationFailedException("Only a draft order can be submitted for approval.");
@@ -156,6 +237,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
             throw new ValidationFailedException("Add at least one order line before submitting.");
 
         order.Status = OrderStatus.Submitted;
+        order.SubmittedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
         await NotifyOrderAwaitingApprovalAsync(order, ct);
@@ -230,6 +312,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
             .Include(o => o.Lines.Where(l => !l.IsDeleted))
             .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Order), orderId);
+        EnsureCallerMayAccess(order);
 
         if (order.Status != OrderStatus.Approved)
             throw new ValidationFailedException("Only an approved order can be delivered.");
@@ -266,6 +349,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
     {
         var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Order), orderId);
+        EnsureCallerMayAccess(order);
 
         if (order.Status is not (OrderStatus.Draft or OrderStatus.Submitted))
             throw new ValidationFailedException("Only a draft or submitted order can be cancelled — an approved order is already committed to delivery.");
@@ -306,6 +390,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
     {
         var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Order), orderId);
+        EnsureCallerMayAccess(order);
 
         if (order.Status != OrderStatus.Draft)
             throw new ValidationFailedException("Only a draft order can be edited.");
@@ -313,13 +398,35 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
         return order;
     }
 
+    /// <summary>True for a field rep without a manager/back-office role: they may only see and change their own orders.</summary>
+    private bool CallerIsRepresentativeOnly =>
+        currentUser.IsInRole(Roles.Representative) && !currentUser.HasUnrestrictedAccess
+        && !currentUser.IsInRole(Roles.DistrictManager) && !currentUser.IsInRole(Roles.Finance);
+
+    private void EnsureCallerMayAccess(Order order)
+    {
+        if (CallerIsRepresentativeOnly && order.RepresentativeId != currentUser.RepresentativeId)
+            throw new ForbiddenAccessException();
+    }
+
+    private static void ValidateLine(OrderLineSaveRequest line)
+    {
+        if (line.Quantity <= 0)
+            throw new ValidationFailedException("Quantity must be greater than zero.");
+        if (line.BonusQuantity < 0)
+            throw new ValidationFailedException("Bonus quantity cannot be negative.");
+        if (line.DiscountPercent is < 0 or > 100)
+            throw new ValidationFailedException("Discount must be between 0% and 100%.");
+    }
+
     private static OrderDetailDto ToDetailDto(Order order)
     {
-        var lines = order.Lines.Select(l => new OrderLineDto(l.Id, l.ProductId, l.Product.Name, l.Quantity,
+        // Entry order — what the rep typed, line by line.
+        var lines = order.Lines.OrderBy(l => l.Id).Select(l => new OrderLineDto(l.Id, l.ProductId, l.Product.Name, l.Quantity,
             l.BonusQuantity, l.UnitPrice, l.DiscountPercent, l.Quantity * l.UnitPrice * (1 - l.DiscountPercent / 100m))).ToList();
 
         return new OrderDetailDto(order.Id, order.PharmacyId, order.Pharmacy.Name, order.RepresentativeId,
             order.Representative.FullName, order.OrderDateUtc, order.Status, order.RejectionReason, lines,
-            lines.Sum(l => l.LineTotal), order.Sale?.Id);
+            lines.Sum(l => l.LineTotal), order.Sale?.Id, order.SubmittedAtUtc, order.PharmacyVisitId);
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using PharmaERP.Application.Collections;
 using PharmaERP.Application.Common;
 using PharmaERP.Application.Custody;
@@ -23,6 +24,7 @@ using PharmaERP.Application.Suppliers;
 using PharmaERP.Application.Territories;
 using PharmaERP.Application.Traceability;
 using PharmaERP.Application.VisitPlans;
+using PharmaERP.Application.Visits;
 using PharmaERP.Application.Warehouses;
 
 namespace PharmaERP.Application;
@@ -38,6 +40,11 @@ public static class DependencyInjection
         services.AddScoped<IRepresentativeService, RepresentativeService>();
         services.AddScoped<ITerritoryService, TerritoryService>();
         services.AddScoped<IVisitPlanService, VisitPlanService>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.Configure<BusinessOptions>(configuration.GetSection(BusinessOptions.SectionName));
+        services.AddSingleton<IBusinessCalendar, BusinessCalendar>();
+        services.AddScoped<IVisitSessionService, VisitSessionService>();
+        services.AddScoped<ILocationProposalService, LocationProposalService>();
         services.AddScoped<IPerformanceService, PerformanceService>();
         services.AddScoped<ILocationService, LocationService>();
         services.AddScoped<IProductService, ProductService>();

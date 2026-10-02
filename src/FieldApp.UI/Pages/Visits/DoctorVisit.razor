@@ -1,0 +1,118 @@
+@page "/visits/doctor/{Id:int}"
+@using PharmaERP.Application.Products
+@using PharmaERP.Domain.Enums
+@implements IAsyncDisposable
+@inject VisitSessionManager Visits
+@inject MasterDataSync MasterData
+
+<PageTitle>Doctor visit · Field CRM</PageTitle>
+
+@*
+  Doctor visit (wireframe 7): check in → products discussed, samples, interest, notes → check out.
+  Everything typed is kept on the phone as a draft as it changes, so closing the app mid-visit loses nothing.
+*@
+<VisitScreen Kind="StopKind.Doctor" CustomerId="Id" PlanItemId="PlanItem" ProductNames="_productNames">
+    <section class="app-card">
+        <h2 class="card-heading">Products discussed</h2>
+        <ProductPicker Products="_products" Selected="context.ProductsDiscussed" SelectedChanged="() => SaveAsync(context)" />
+    </section>
+
+    <section class="app-card">
+        <h2 class="card-heading">Samples given</h2>
+        @foreach (var sample in context.Samples.ToList())
+        {
+            <div class="sample-row">
+                <span class="sample-name">@sample.ProductName</span>
+                <div class="qty-stepper" role="group" aria-label="Quantity of @sample.ProductName">
+                    <button type="button" aria-label="Fewer" @onclick="() => ChangeQuantityAsync(context, sample, -1)">−</button>
+                    <span>@sample.Quantity</span>
+                    <button type="button" aria-label="More" @onclick="() => ChangeQuantityAsync(context, sample, +1)">+</button>
+                </div>
+            </div>
+        }
+        <ProductPicker Products="_products" OnPick="p => AddSampleAsync(context, p)" Placeholder="Add a sample…" />
+    </section>
+
+    <section class="app-card">
+        <h2 class="card-heading">Interest level</h2>
+        <div class="segmented three" role="radiogroup" aria-label="Interest level">
+            @foreach (var level in Enum.GetValues<VisitInterestLevel>())
+            {
+                <button type="button" role="radio" aria-checked="@(context.InterestLevel == level ? "true" : "false")"
+                        class="@(context.InterestLevel == level ? "active" : "")"
+                        @onclick="() => SetInterestAsync(context, level)">@level</button>
+            }
+        </div>
+    </section>
+
+    <section class="app-card">
+        <label class="form-label fw-semibold" for="notes">Notes / objections</label>
+        <textarea id="notes" class="form-control" rows="3" maxlength="1000"
+                  @bind="context.Notes" @bind:after="() => SaveAsync(context)"></textarea>
+
+        <label class="form-label fw-semibold mt-3" for="next">Next visit recommendation</label>
+        <input id="next" class="form-control" maxlength="500" placeholder="e.g. Bring trial data for the new dose"
+               @bind="context.NextVisitRecommendation" @bind:after="() => SaveAsync(context)" />
+        <div class="small text-secondary mt-2">Saved on this phone as you go.</div>
+    </section>
+</VisitScreen>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "planItem")] public int? PlanItem { get; set; }
+
+    private IReadOnlyList<ProductListItemDto> _products = [];
+    private IReadOnlyDictionary<int, string> _productNames = new Dictionary<int, string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The catalogue may still be downloading (first sign-in on this phone); pick it up when it lands.
+        MasterData.Synced += OnMasterDataSynced;
+        await LoadProductsAsync();
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        _products = (await MasterData.GetProductsAsync())?.Data ?? [];
+        _productNames = _products.ToDictionary(p => p.Id, p => p.Name);
+    }
+
+    private void OnMasterDataSynced() => _ = InvokeAsync(async () =>
+    {
+        await LoadProductsAsync();
+        StateHasChanged();
+    });
+
+    private Task SaveAsync(OpenVisit visit) => Visits.SaveDraftAsync(visit);
+
+    private Task SetInterestAsync(OpenVisit visit, VisitInterestLevel level)
+    {
+        visit.InterestLevel = visit.InterestLevel == level ? null : level;
+        return SaveAsync(visit);
+    }
+
+    private Task AddSampleAsync(OpenVisit visit, ProductListItemDto product)
+    {
+        var index = visit.Samples.FindIndex(s => s.ProductId == product.Id);
+        if (index >= 0) visit.Samples[index] = visit.Samples[index] with { Quantity = visit.Samples[index].Quantity + 1 };
+        else visit.Samples.Add(new SampleLine(product.Id, product.Name, 1));
+        return SaveAsync(visit);
+    }
+
+    private Task ChangeQuantityAsync(OpenVisit visit, SampleLine sample, int delta)
+    {
+        var index = visit.Samples.FindIndex(s => s.ProductId == sample.ProductId);
+        if (index < 0) return Task.CompletedTask;
+        var quantity = visit.Samples[index].Quantity + delta;
+        if (quantity <= 0) visit.Samples.RemoveAt(index);
+        else visit.Samples[index] = visit.Samples[index] with { Quantity = quantity };
+        return SaveAsync(visit);
+    }
+
+    // Leaving the screen with a visit open (back button, bottom nav) keeps the draft.
+    public async ValueTask DisposeAsync()
+    {
+        MasterData.Synced -= OnMasterDataSynced;
+        if (Visits.Current is { Kind: StopKind.Doctor } open && open.CustomerId == Id) await Visits.SaveDraftAsync(open);
+    }
+}

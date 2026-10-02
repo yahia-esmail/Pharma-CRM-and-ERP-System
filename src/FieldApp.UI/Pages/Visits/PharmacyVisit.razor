@@ -1,0 +1,89 @@
+@page "/visits/pharmacy/{Id:int}"
+@using PharmaERP.Domain.Enums
+@implements IAsyncDisposable
+@inject VisitSessionManager Visits
+@inject PharmacyAccountCache Accounts
+
+<PageTitle>Pharmacy visit · Field CRM</PageTitle>
+
+@*
+  Pharmacy visit (wireframe 8): account snapshot, check in, purpose, notes, check out. Orders and
+  collections taken during the visit get their own screens (phases 7 & 8).
+*@
+<VisitScreen Kind="StopKind.Pharmacy" CustomerId="Id" PlanItemId="PlanItem">
+    <BeforeCheckIn>
+        <PharmacyAccountCard Account="_account" Loading="_accountLoading" IsStale="_accountStale" />
+    </BeforeCheckIn>
+    <ChildContent Context="visit">
+        <PharmacyAccountCard Account="_account" Loading="_accountLoading" IsStale="_accountStale" />
+
+        <section class="app-card">
+            <h2 class="card-heading">Visit purpose</h2>
+            <div class="segmented three" role="radiogroup" aria-label="Visit purpose">
+                @foreach (var (purpose, label) in Purposes)
+                {
+                    <button type="button" role="radio" aria-checked="@(visit.Purpose == purpose ? "true" : "false")"
+                            class="@(visit.Purpose == purpose ? "active" : "")"
+                            @onclick="() => SetPurposeAsync(visit, purpose)">@label</button>
+                }
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <a class="btn btn-outline-primary flex-fill" href="orders/new?pharmacyId=@Id&fromVisit=true">Create order</a>
+                <button class="btn btn-outline-primary flex-fill" disabled title="Collections arrive with phase 8">Record collection</button>
+            </div>
+            <div class="small text-secondary mt-1">Collection entry is coming in the next update.</div>
+        </section>
+
+        <section class="app-card">
+            <label class="form-label fw-semibold" for="notes">Notes</label>
+            <textarea id="notes" class="form-control" rows="3" maxlength="1000"
+                      @bind="visit.Notes" @bind:after="() => Visits.SaveDraftAsync(visit)"></textarea>
+            <div class="small text-secondary mt-2">Saved on this phone as you go.</div>
+        </section>
+    </ChildContent>
+</VisitScreen>
+
+@code {
+    private static readonly (PharmacyVisitPurpose Purpose, string Label)[] Purposes =
+    [
+        (PharmacyVisitPurpose.OrderTaking, "Order"),
+        (PharmacyVisitPurpose.Collection, "Collection"),
+        (PharmacyVisitPurpose.RelationshipVisit, "Relationship")
+    ];
+
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "planItem")] public int? PlanItem { get; set; }
+
+    private Cached<PharmacyAccount>? _account;
+    private bool _accountLoading = true;
+    private bool _accountStale;
+    private int? _accountFor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_accountFor == Id) return;
+        _accountFor = Id;
+        _accountLoading = true;
+
+        // Show the saved copy at once, then replace it with the server's when there's signal.
+        _account = await Accounts.GetCachedAsync(Id);
+        _accountStale = _account is not null;
+        StateHasChanged();
+
+        var openedAt = DateTime.UtcNow;
+        _account = await Accounts.GetAsync(Id);
+        _accountStale = _account is not null && _account.SavedAtUtc < openedAt;
+        _accountLoading = false;
+    }
+
+    private Task SetPurposeAsync(OpenVisit visit, PharmacyVisitPurpose purpose)
+    {
+        visit.Purpose = purpose;
+        return Visits.SaveDraftAsync(visit);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Visits.Current is { Kind: StopKind.Pharmacy } open && open.CustomerId == Id) await Visits.SaveDraftAsync(open);
+    }
+}

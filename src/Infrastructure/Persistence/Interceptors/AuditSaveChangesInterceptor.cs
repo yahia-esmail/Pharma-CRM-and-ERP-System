@@ -62,7 +62,9 @@ public class AuditSaveChangesInterceptor(ICurrentUserService currentUser, IHttpC
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.Entity is AuditLog) continue;
+            // Idempotency records are request-replay plumbing (they hold whole response bodies), not
+            // business data — auditing them would only bloat the audit trail.
+            if (entry.Entity is AuditLog or IdempotencyRecord) continue;
 
             if (entry.Entity is AuditableEntity auditable)
             {

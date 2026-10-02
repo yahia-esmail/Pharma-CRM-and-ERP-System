@@ -1,0 +1,107 @@
+@using Microsoft.Extensions.Options
+@using PharmaERP.FieldApp.UI.Services
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IOptions<MapOptions> MapSettings
+
+@* Leaflet map: numbered stops, the rep's position with its accuracy circle, and an optional geofence. *@
+<div class="map-view" style="height:@Height" @ref="_element">
+    @if (_failed)
+    {
+        <div class="map-fallback">Map unavailable offline — distances below are still accurate.</div>
+    }
+</div>
+
+@code {
+    public sealed record Marker(double Latitude, double Longitude, string? Label, string? Title, string Color = "#1f4e79");
+    public sealed record Fence(double Latitude, double Longitude, double RadiusMeters, string Color = "#1e8e3e");
+
+    [Parameter] public IReadOnlyList<Marker> Markers { get; set; } = [];
+    [Parameter] public GeoFix? Self { get; set; }
+    [Parameter] public Fence? Geofence { get; set; }
+    [Parameter] public string Height { get; set; } = "260px";
+
+    /// <summary>Re-fit the view whenever the marker set changes (off when the rep is panning manually).</summary>
+    [Parameter] public bool AutoFit { get; set; } = true;
+
+    private ElementReference _element;
+    private IJSObjectReference? _module;
+    private int? _mapId;
+    private bool _failed;
+    private IReadOnlyList<Marker>? _renderedMarkers;
+    private GeoFix? _renderedSelf;
+    private Fence? _renderedFence;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/PharmaERP.FieldApp.UI/js/map.js");
+                var center = Self is { } s ? (s.Latitude, s.Longitude)
+                    : Geofence is { } f ? (f.Latitude, f.Longitude)
+                    : Markers.Count > 0 ? (Markers[0].Latitude, Markers[0].Longitude)
+                    : (30.0444, 31.2357);   // Cairo, until something better is known
+                _mapId = await _module.InvokeAsync<int>("create", _element, new
+                {
+                    latitude = center.Item1,
+                    longitude = center.Item2,
+                    zoom = 15,
+                    tileUrl = MapSettings.Value.TileUrl,
+                    attribution = MapSettings.Value.Attribution
+                });
+            }
+            if (_module is null || _mapId is not { } id) return;
+
+            var fit = false;
+            if (!ReferenceEquals(_renderedMarkers, Markers) && (_renderedMarkers is null || !_renderedMarkers.SequenceEqual(Markers)))
+            {
+                await _module.InvokeVoidAsync("setMarkers", id, Markers.Select(m => new
+                {
+                    latitude = m.Latitude, longitude = m.Longitude, label = m.Label, title = m.Title, color = m.Color
+                }), false);
+                // Re-fit only when the set of places changed — not when a colour or distance label did,
+                // which would yank the view away while the rep is panning.
+                var moved = _renderedMarkers is null || !_renderedMarkers.Select(m => (m.Latitude, m.Longitude))
+                    .SequenceEqual(Markers.Select(m => (m.Latitude, m.Longitude)));
+                _renderedMarkers = Markers;
+                fit = AutoFit && moved;
+            }
+            if (_renderedSelf != Self)
+            {
+                await _module.InvokeVoidAsync("setSelf", id, Self is { } me
+                    ? new { latitude = me.Latitude, longitude = me.Longitude, accuracyMeters = me.AccuracyMeters }
+                    : null);
+                fit |= AutoFit && _renderedSelf is null;
+                _renderedSelf = Self;
+            }
+            if (_renderedFence != Geofence)
+            {
+                await _module.InvokeVoidAsync("setGeofence", id, Geofence is { } g
+                    ? new { latitude = g.Latitude, longitude = g.Longitude, radiusMeters = g.RadiusMeters, color = g.Color }
+                    : null);
+                fit |= AutoFit;
+                _renderedFence = Geofence;
+            }
+            if (fit) await _module.InvokeVoidAsync("fitAll", id);
+        }
+        catch (JSException)
+        {
+            // Leaflet itself couldn't load (first run offline before it was cached).
+            _failed = true;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is null) return;
+        try
+        {
+            if (_mapId is { } id) await _module.InvokeVoidAsync("dispose", id);
+            await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+    }
+}

@@ -1,0 +1,94 @@
+@implements IDisposable
+@inject MasterDataSync MasterData
+@inject TodayPlanState Plan
+@inject LocationTracker Tracker
+
+@*
+  "Add unplanned visit" (plan 7.10): customers from the offline catalogue, nearest first. Uses the latest
+  tracking fix when there is one, otherwise asks for a fresh fix — it works fully offline.
+*@
+<section class="app-card">
+    <h2 class="card-heading">Add unplanned visit</h2>
+
+    @if (Position is null)
+    {
+        <p class="small text-secondary">Get your location to see the doctors and pharmacies closest to you.</p>
+        <LocationCapture ButtonText="Find customers near me" OnCaptured="_ => Rank()" />
+    }
+    else if (_nearby is null)
+    {
+        <div class="card-skeleton"></div>
+    }
+    else if (_nearby.Count == 0)
+    {
+        <p class="small text-secondary mb-0">
+            @if (_withLocation == 0)
+            {
+                <span>None of your customers has a saved location yet, so they can't be ranked by distance.</span>
+            }
+            else
+            {
+                <span>No customer with a saved location within 5 km.</span>
+            }
+        </p>
+    }
+    else
+    {
+        <p class="small text-secondary">Nearest to you (±@Position.AccuracyMeters.ToString("0") m):</p>
+        @foreach (var n in _nearby)
+        {
+            <a class="nearby-row" href="@n.VisitUrl">
+                <span class="kind-chip @n.Kind.ToString().ToLowerInvariant()">@n.Kind</span>
+                <span class="nearby-name">
+                    @n.Name
+                    @if (n.Detail is { } detail)
+                    {
+                        <span class="text-secondary small"> · @detail</span>
+                    }
+                    @if (n.InTodaysPlan)
+                    {
+                        <span class="in-plan">in today's plan</span>
+                    }
+                </span>
+                <span class="fw-semibold">@GeoMath.FormatDistance(n.DistanceMeters)</span>
+            </a>
+        }
+    }
+</section>
+
+@code {
+    private IReadOnlyList<NearbyCustomer>? _nearby;
+    private int _withLocation;
+    private GeoFix? _rankedFor;
+
+    private GeoFix? Position => Tracker.LastFix;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Tracker.Changed += OnTrackerChanged;
+        await RankAsync();
+    }
+
+    private void Rank() => _ = InvokeAsync(async () =>
+    {
+        await RankAsync();
+        StateHasChanged();
+    });
+
+    private async Task RankAsync()
+    {
+        if (Position is not { } fix) return;
+        // Re-rank only after real movement; GPS jitter shouldn't reshuffle the list under the rep's finger.
+        if (_rankedFor is not null && GeoMath.DistanceMeters(_rankedFor, fix) < 50) return;
+        _rankedFor = fix;
+
+        var doctors = (await MasterData.GetDoctorsAsync())?.Data ?? [];
+        var pharmacies = (await MasterData.GetPharmaciesAsync())?.Data ?? [];
+        _withLocation = doctors.Count(d => d.Latitude is not null) + pharmacies.Count(p => p.Latitude is not null);
+        _nearby = PlanLogic.FindNearby(fix, doctors, pharmacies, Plan.Stops);
+    }
+
+    private void OnTrackerChanged() => Rank();
+
+    public void Dispose() => Tracker.Changed -= OnTrackerChanged;
+}

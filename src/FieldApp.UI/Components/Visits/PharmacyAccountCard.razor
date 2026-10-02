@@ -1,0 +1,69 @@
+@using PharmaERP.FieldApp.UI.Services.Offline
+
+@* Account snapshot on the pharmacy visit (wireframe 8): what's owed, how old it is, and the credit headroom,
+   so the rep knows before taking an order or asking for a collection. Shows the saved copy when offline. *@
+<section class="app-card account-card">
+    <div class="d-flex justify-content-between align-items-baseline">
+        <h2 class="card-heading mb-2">Account snapshot</h2>
+        @if (Account is { } stale && IsStale)
+        {
+            <span class="small text-secondary">as of @stale.SavedAtUtc.ToLocalTime().ToString("dd MMM HH:mm")</span>
+        }
+    </div>
+
+    @if (Loading && Account is null)
+    {
+        <div class="card-skeleton" style="height:72px"></div>
+    }
+    else if (Account?.Data is not { } a)
+    {
+        <p class="small text-secondary mb-0">Account details aren't available offline yet. They load the next time you open this pharmacy with signal.</p>
+    }
+    else
+    {
+        <div class="account-grid">
+            <div>
+                <span class="kpi-label">Outstanding</span>
+                <MoneyText Value="a.Ledger.OutstandingBalance" Class="account-value" />
+            </div>
+            <div>
+                <span class="kpi-label">Credit limit</span>
+                @if (a.CreditLimit is > 0)
+                {
+                    <MoneyText Value="a.CreditLimit" Class="account-value" />
+                }
+                else
+                {
+                    <span class="account-value">@(a.CreditLimit is null ? "—" : "No limit")</span>
+                }
+            </div>
+            <div>
+                <span class="kpi-label">Aging 60+</span>
+                <MoneyText Value="a.Ledger.Aging60Plus" Class="@($"account-value {(a.Ledger.Aging60Plus > 0 ? "text-danger" : "")}")" />
+            </div>
+        </div>
+        <div class="aging-line">
+            0–30: <MoneyText Value="a.Ledger.Aging0To30" Compact /> · 31–60: <MoneyText Value="a.Ledger.Aging31To60" Compact />
+            @if (a.OverdueInvoices > 0)
+            {
+                <span> · @a.OverdueInvoices overdue @(a.OverdueInvoices == 1 ? "invoice" : "invoices")</span>
+            }
+        </div>
+        @if (a.OverCreditLimit)
+        {
+            <div class="alert alert-warning py-2 small mt-2 mb-0">Over the credit limit — new orders will need a collection or manager approval.</div>
+        }
+        else if (a.AvailableCredit is { } available)
+        {
+            <div class="small text-secondary mt-1">Available credit <MoneyText Value="available" /></div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Cached<PharmacyAccount>? Account { get; set; }
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>Set by the page when the copy shown didn't come from the server just now.</summary>
+    [Parameter] public bool IsStale { get; set; }
+}

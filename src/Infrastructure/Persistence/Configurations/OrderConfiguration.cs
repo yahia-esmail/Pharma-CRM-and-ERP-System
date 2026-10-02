@@ -22,6 +22,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasForeignKey(o => o.RepresentativeId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(o => o.PharmacyVisit)
+            .WithMany()
+            .HasForeignKey(o => o.PharmacyVisitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(o => o.Sale)
             .WithOne(s => s.Order)
             .HasForeignKey<Sale>(s => s.OrderId)

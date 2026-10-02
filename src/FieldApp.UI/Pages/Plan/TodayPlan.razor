@@ -1,0 +1,197 @@
+@page "/plan"
+@implements IDisposable
+@inject TodayPlanState Plan
+@inject LocationTracker Tracker
+@inject INetworkStatus Network
+
+<PageTitle>Today's Plan · Field CRM</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title mb-0">Today's Plan</h1>
+        <div class="small text-secondary">@DateTime.Now.ToString("dddd d MMMM")</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@(_refreshing || !Network.IsOnline)">
+        @(_refreshing ? "Refreshing…" : "Refresh")
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Completed))
+{
+    <div class="alert alert-success py-2 small" role="status">
+        Visit at <strong>@Completed</strong> saved@(Network.IsOnline ? "." : " — it will sync when you're back online.")
+    </div>
+}
+
+@if (_refreshFailed)
+{
+    <div class="alert alert-warning py-2 small">Couldn't reach the server — showing the plan saved on this phone.</div>
+}
+
+@if (!Plan.HasData)
+{
+    <EmptyState Title="Plan not downloaded yet" Message="Connect to the internet once to download today's plan." />
+}
+else
+{
+    var total = Plan.Stops.Count;
+    <section class="app-card plan-summary">
+        <div class="d-flex justify-content-between align-items-baseline">
+            <span class="fw-semibold">@Plan.DoneCount of @total visits done</span>
+            @if (Plan.SavedAtUtc is { } saved)
+            {
+                <span class="small text-secondary">as of @saved.ToLocalTime().ToString("HH:mm")</span>
+            }
+        </div>
+        <div class="progress mt-2" role="progressbar" aria-valuenow="@Percent" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" style="width:@Percent%"></div>
+        </div>
+        @if (Plan.Route.RemainingStops > 0)
+        {
+            <div class="route-line">
+                @RouteText
+                @if (Plan.Route.MappedStops < Plan.Route.RemainingStops)
+                {
+                    <span class="text-warning">@($" · {Plan.Route.RemainingStops - Plan.Route.MappedStops} without location")</span>
+                }
+            </div>
+        }
+        <button class="btn btn-sm w-100 mt-2 @(Tracker.RouteMode ? "btn-danger" : "btn-outline-primary")" @onclick="ToggleRouteAsync">
+            @(Tracker.RouteMode ? $"Stop route ({GeoMath.FormatDistance(Tracker.RouteDistanceMeters)} driven)" : "Start route")
+        </button>
+        @if (Tracker.RouteMode)
+        {
+            <p class="small text-secondary mb-0 mt-1">Keep the app open: the screen stays on and your route is recorded. This uses more battery.</p>
+        }
+    </section>
+
+    <div class="segmented" role="tablist">
+        <button role="tab" class="@(_tab == Tab.List ? "active" : "")" @onclick="() => _tab = Tab.List">List</button>
+        <button role="tab" class="@(_tab == Tab.Map ? "active" : "")" @onclick="() => _tab = Tab.Map">Map</button>
+    </div>
+
+    <div class="filter-chips">
+        @foreach (var f in Enum.GetValues<Filter>())
+        {
+            <button class="chip @(_filter == f ? "active" : "")" @onclick="() => _filter = f">@FilterLabel(f)</button>
+        }
+    </div>
+
+    @if (_filter == Filter.Unplanned)
+    {
+        <NearbyCustomers />
+    }
+    else if (_tab == Tab.Map)
+    {
+        <MapView Markers="Markers" Self="Plan.Position" Height="420px" />
+        <div class="map-legend">
+            <span><i style="background:#2e7d32"></i>Done</span>
+            <span><i style="background:#1f4e79"></i>Next</span>
+            <span><i style="background:#8a96a3"></i>Pending</span>
+            <span><i class="self"></i>You</span>
+        </div>
+        @if (Filtered.Count(s => !s.HasLocation) is var missing and > 0)
+        {
+            <p class="small text-warning mt-2">@missing stop(s) have no saved location and aren't on the map.</p>
+        }
+    }
+    else if (Filtered.Count == 0)
+    {
+        <EmptyState Title="Nothing here" Message="@(total == 0 ? "No visits are planned for today." : "No stops match this filter.")" />
+    }
+    else
+    {
+        @foreach (var stop in Filtered)
+        {
+            <PlanStopCard Stop="stop" />
+        }
+    }
+}
+
+@code {
+    private enum Tab { List, Map }
+    private enum Filter { All, Doctors, Pharmacies, Unplanned }
+
+    private Tab _tab = Tab.List;
+    private Filter _filter = Filter.All;
+    private bool _refreshing;
+    private bool _refreshFailed;
+    private IReadOnlyList<MapView.Marker> _markers = [];
+    private (IReadOnlyList<PlanStop> Stops, Filter Filter)? _markersFor;
+
+    private string RouteText => Plan.Route.MappedStops > 0
+        ? $"{Plan.Route.RemainingStops} left · Route {GeoMath.FormatDistance(Plan.Route.DistanceMeters)} · ~{PlanLogic.FormatDuration(Plan.Route.DriveTime)} driving"
+        : $"{Plan.Route.RemainingStops} left";
+
+    private int Percent => Plan.Stops.Count == 0 ? 0 : (int)Math.Round(100.0 * Plan.DoneCount / Plan.Stops.Count);
+
+    private IReadOnlyList<PlanStop> Filtered => _filter switch
+    {
+        Filter.Doctors => Plan.Stops.Where(s => s.Kind == StopKind.Doctor).ToList(),
+        Filter.Pharmacies => Plan.Stops.Where(s => s.Kind == StopKind.Pharmacy).ToList(),
+        _ => Plan.Stops
+    };
+
+    private string FilterLabel(Filter f) => f switch
+    {
+        Filter.All => $"All {Plan.Stops.Count}",
+        Filter.Doctors => $"Doctors {Plan.Stops.Count(s => s.Kind == StopKind.Doctor)}",
+        Filter.Pharmacies => $"Pharmacies {Plan.Stops.Count(s => s.Kind == StopKind.Pharmacy)}",
+        _ => "Unplanned"
+    };
+
+    // Quick action "Unplanned visit" on the dashboard links to plan?filter=unplanned.
+    [SupplyParameterFromQuery(Name = "filter")] public string? FilterQuery { get; set; }
+
+    /// <summary>Customer name of the visit just checked out (set by the visit screen).</summary>
+    [SupplyParameterFromQuery(Name = "completed")] public string? Completed { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Enum.TryParse<Filter>(FilterQuery, ignoreCase: true, out var requested)) _filter = requested;
+        Plan.Changed += OnPlanChanged;
+        Tracker.Changed += OnTrackerChanged;
+        await Plan.EnsureLoadedAsync();
+    }
+
+    // Rebuilt only when the stops or the filter change: MapView re-fits the view whenever it gets a new list.
+    private IReadOnlyList<MapView.Marker> Markers
+    {
+        get
+        {
+            if (_markersFor is not { } key || !ReferenceEquals(key.Stops, Plan.Stops) || key.Filter != _filter)
+            {
+                BuildMarkers();
+                _markersFor = (Plan.Stops, _filter);
+            }
+            return _markers;
+        }
+    }
+
+    private void BuildMarkers() =>
+        _markers = Filtered.Where(s => s.HasLocation).Select(s => new MapView.Marker(
+            s.Item.Latitude!.Value, s.Item.Longitude!.Value, s.Item.Sequence.ToString(),
+            $"{s.Item.Sequence}. {s.Name}{(s.DistanceMeters is { } d ? $" · {GeoMath.FormatDistance(d)}" : "")}",
+            s.Status switch { StopStatus.Done => "#2e7d32", StopStatus.Next => "#1f4e79", _ => "#8a96a3" })).ToList();
+
+    private async Task RefreshAsync()
+    {
+        _refreshing = true;
+        _refreshFailed = false;
+        try { _refreshFailed = !await Plan.RefreshAsync(); }
+        finally { _refreshing = false; }
+    }
+
+    private Task ToggleRouteAsync() => Tracker.SetRouteModeAsync(!Tracker.RouteMode);
+
+    private void OnPlanChanged() => InvokeAsync(StateHasChanged);
+
+    // Only the route button text depends on the tracker directly; distances arrive via Plan.Changed.
+    private void OnTrackerChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Plan.Changed -= OnPlanChanged;
+        Tracker.Changed -= OnTrackerChanged;
+    }
+}

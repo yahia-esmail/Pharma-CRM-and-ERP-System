@@ -540,6 +540,78 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.ToTable("CustomerListItems");
                 });
 
+            modelBuilder.Entity("PharmaERP.Domain.Entities.CustomerLocationProposal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("AccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CapturedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PharmacyId")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("PreviousLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("PreviousLongitude")
+                        .HasColumnType("float");
+
+                    b.Property<int>("RepresentativeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("PharmacyId");
+
+                    b.HasIndex("RepresentativeId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("CustomerLocationProposals", t =>
+                        {
+                            t.HasCheckConstraint("CK_CustomerLocationProposals_OneCustomer", "([DoctorId] IS NOT NULL AND [PharmacyId] IS NULL) OR ([DoctorId] IS NULL AND [PharmacyId] IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("PharmaERP.Domain.Entities.CustomerTransferLog", b =>
                 {
                     b.Property<int>("Id")
@@ -815,11 +887,41 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<double?>("CheckInAccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CheckInClockOffsetSeconds")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckInDeviceTimeUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<double?>("CheckInLatitude")
                         .HasColumnType("float");
 
                     b.Property<double?>("CheckInLongitude")
                         .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckInReceivedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double?>("CheckOutAccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CheckOutClockOffsetSeconds")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckOutDeviceTimeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double?>("CheckOutLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CheckOutLongitude")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckOutReceivedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -828,6 +930,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("DeviceClockSuspect")
+                        .HasColumnType("bit");
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
@@ -840,6 +945,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("FeedbackNotes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("InterestLevel")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -866,6 +974,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.Property<string>("NextVisitRecommendation")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OutsideGeofenceReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("OutsideTerritory")
                         .HasColumnType("bit");
 
@@ -880,6 +991,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("SamplesGiven")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SessionStatus")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("VisitDateUtc")
                         .HasColumnType("datetime2");
@@ -1102,6 +1216,69 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.ToTable("FinancialReconciliations");
                 });
 
+            modelBuilder.Entity("PharmaERP.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("nvarchar(44)");
+
+                    b.Property<byte[]>("ResponseBody")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ResponseContentType")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ResponseLocation")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("UserId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("IdempotencyRecords");
+                });
+
             modelBuilder.Entity("PharmaERP.Domain.Entities.LocationPing", b =>
                 {
                     b.Property<long>("Id")
@@ -1110,19 +1287,51 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<double?>("AccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("AltitudeMeters")
+                        .HasColumnType("float");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double?>("Heading")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsAnomaly")
+                        .HasColumnType("bit");
+
                     b.Property<double>("Latitude")
                         .HasColumnType("float");
 
                     b.Property<double>("Longitude")
                         .HasColumnType("float");
 
+                    b.Property<DateTime>("ReceivedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("RepresentativeId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasDefaultValue("Track");
+
+                    b.Property<double?>("SpeedMps")
+                        .HasColumnType("float");
 
                     b.Property<DateTime>("TimestampUtc")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RepresentativeId", "ClientId")
+                        .IsUnique()
+                        .HasFilter("[ClientId] IS NOT NULL");
 
                     b.HasIndex("RepresentativeId", "TimestampUtc");
 
@@ -1206,6 +1415,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.Property<int>("PharmacyId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PharmacyVisitId")
+                        .HasColumnType("int");
+
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)");
 
@@ -1215,11 +1427,25 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<double?>("SubmitAccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("SubmitLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("SubmitLongitude")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OrderDateUtc");
 
                     b.HasIndex("PharmacyId");
+
+                    b.HasIndex("PharmacyVisitId");
 
                     b.HasIndex("RepresentativeId");
 
@@ -1428,11 +1654,41 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<double?>("CheckInAccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CheckInClockOffsetSeconds")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckInDeviceTimeUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<double?>("CheckInLatitude")
                         .HasColumnType("float");
 
                     b.Property<double?>("CheckInLongitude")
                         .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckInReceivedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double?>("CheckOutAccuracyMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CheckOutClockOffsetSeconds")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckOutDeviceTimeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double?>("CheckOutLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CheckOutLongitude")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("CheckOutReceivedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -1441,6 +1697,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("DeviceClockSuspect")
+                        .HasColumnType("bit");
 
                     b.Property<int?>("DurationMinutes")
                         .HasColumnType("int");
@@ -1467,6 +1726,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OutsideGeofenceReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("OutsideTerritory")
                         .HasColumnType("bit");
 
@@ -1477,6 +1739,9 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("RepresentativeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SessionStatus")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("VisitDateUtc")
@@ -1827,6 +2092,10 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasMaxLength(44)
+                        .HasColumnType("nvarchar(44)");
 
                     b.Property<DateTime?>("RevokedAtUtc")
                         .HasColumnType("datetime2");
@@ -2851,6 +3120,31 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                     b.Navigation("Pharmacy");
                 });
 
+            modelBuilder.Entity("PharmaERP.Domain.Entities.CustomerLocationProposal", b =>
+                {
+                    b.HasOne("PharmaERP.Domain.Entities.Doctor", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PharmaERP.Domain.Entities.Pharmacy", "Pharmacy")
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PharmaERP.Domain.Entities.Representative", "Representative")
+                        .WithMany()
+                        .HasForeignKey("RepresentativeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Pharmacy");
+
+                    b.Navigation("Representative");
+                });
+
             modelBuilder.Entity("PharmaERP.Domain.Entities.CustomerTransferLog", b =>
                 {
                     b.HasOne("PharmaERP.Domain.Entities.Doctor", "Doctor")
@@ -2999,6 +3293,11 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PharmaERP.Domain.Entities.PharmacyVisit", "PharmacyVisit")
+                        .WithMany()
+                        .HasForeignKey("PharmacyVisitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PharmaERP.Domain.Entities.Representative", "Representative")
                         .WithMany()
                         .HasForeignKey("RepresentativeId")
@@ -3006,6 +3305,8 @@ namespace PharmaERP.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Pharmacy");
+
+                    b.Navigation("PharmacyVisit");
 
                     b.Navigation("Representative");
                 });

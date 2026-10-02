@@ -8,9 +8,11 @@ using Microsoft.OpenApi;
 using PharmaERP.Application;
 using PharmaERP.Application.Common;
 using PharmaERP.Infrastructure;
+using PharmaERP.Infrastructure.BackgroundServices;
 using PharmaERP.Infrastructure.Persistence;
 using PharmaERP.Infrastructure.Security;
 using PharmaERP.Infrastructure.Services;
+using PharmaERP.Web.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,11 +73,24 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter a valid JWT access token."
     };
     options.AddSecurityDefinition("Bearer", securityScheme);
-    options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    // The reference must be bound to the generated document, otherwise it serializes as an empty
+    // requirement ("security": [{}]) and Swagger UI never sends the Bearer header.
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        { new OpenApiSecuritySchemeReference("Bearer", null, null), [] }
+        { new OpenApiSecuritySchemeReference("Bearer", document), [] }
     });
 });
+
+// The field-force PWA (PharmaERP.FieldApp) is served from its own origin and calls this API cross-origin.
+const string FieldAppCorsPolicy = "FieldApp";
+builder.Services.AddCors(options => options.AddPolicy(FieldAppCorsPolicy, policy => policy
+    .WithOrigins(builder.Configuration.GetSection("Cors:FieldAppOrigins").Get<string[]>() ?? [])
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .WithExposedHeaders("Location", IdempotencyMiddleware.ReplayedHeaderName)));
+
+// Purges stored responses for Idempotency-Key replays (see IdempotencyMiddleware).
+builder.Services.AddHostedService<IdempotencyCleanupService>();
 
 builder.Services.AddResponseCompression();
 builder.Services.AddHealthChecks()
@@ -99,8 +114,11 @@ app.UseResponseCompression();
 app.UseSecurityHeaders();
 app.UseHttpsRedirection();
 
+app.UseCors(FieldAppCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+// After authorization: only requests that will actually reach an endpoint are recorded.
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();
 app.MapHealthChecks("/health");

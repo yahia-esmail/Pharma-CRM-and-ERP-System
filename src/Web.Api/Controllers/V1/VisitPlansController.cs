@@ -12,15 +12,17 @@ namespace PharmaERP.Web.Api.Controllers.V1;
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize(Policy = Policies.VisitPlansView)]
-public class VisitPlansController(IVisitPlanService visitPlanService, ICurrentUserService currentUser) : ControllerBase
+public class VisitPlansController(IVisitPlanService visitPlanService, ICurrentUserService currentUser,
+    IBusinessCalendar calendar) : ControllerBase
 {
+    /// <summary>The rep's stops for today — "today" in the business time zone (Business:TimeZone), not UTC.</summary>
     [HttpGet("today")]
     public async Task<ActionResult<IReadOnlyList<VisitPlanItemDto>>> GetTodaysPlan(CancellationToken ct)
     {
         var repId = CurrentRepresentativeId();
         if (repId is null) return Forbid();
 
-        return Ok(await visitPlanService.GetTodaysPlanAsync(repId.Value, DateOnly.FromDateTime(DateTime.UtcNow), ct));
+        return Ok(await visitPlanService.GetTodaysPlanAsync(repId.Value, calendar.Today, ct));
     }
 
     [HttpGet("mine")]

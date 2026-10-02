@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Representatives;
+using PharmaERP.Infrastructure.Identity;
 using PharmaERP.Shared.Common;
 using PharmaERP.Shared.Security;
 using PharmaERP.Web.Mvc.Models;
@@ -12,7 +14,8 @@ using PharmaERP.Web.Mvc.Models;
 namespace PharmaERP.Web.Mvc.Controllers;
 
 [Authorize(Policy = Policies.RepresentativesView)]
-public class RepresentativesController(IRepresentativeService repService, IAppDbContext db) : Controller
+public class RepresentativesController(
+    IRepresentativeService repService, IAppDbContext db, UserManager<ApplicationUser> userManager) : Controller
 {
     public async Task<IActionResult> Index(string? search, int page = 1)
     {
@@ -52,8 +55,27 @@ public class RepresentativesController(IRepresentativeService repService, IAppDb
             return View(vm);
         }
 
+        if (!string.IsNullOrWhiteSpace(vm.LoginPassword) && string.IsNullOrWhiteSpace(vm.Email))
+        {
+            ModelState.AddModelError(nameof(vm.Email), "Email is required to create a login account.");
+            await PopulateLookupsAsync(vm);
+            return View(vm);
+        }
+
         var id = await repService.CreateAsync(ToRequest(vm));
-        TempData["StatusMessage"] = "Representative created successfully.";
+
+        if (!string.IsNullOrWhiteSpace(vm.LoginPassword))
+        {
+            var (success, error) = await TryCreateLoginAsync(id, vm.FullName, vm.Email!, vm.LoginPassword);
+            TempData["StatusMessage"] = success
+                ? "Representative created and login account linked."
+                : $"Representative created, but the login account could not be created: {error}";
+        }
+        else
+        {
+            TempData["StatusMessage"] = "Representative created successfully.";
+        }
+
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -80,7 +102,8 @@ public class RepresentativesController(IRepresentativeService repService, IAppDb
             TerritoryId = rep.TerritoryId,
             ReportingManagerId = rep.ReportingManagerId,
             Phone = rep.Phone,
-            Email = rep.Email
+            Email = rep.Email,
+            ApplicationUserId = rep.ApplicationUserId
         };
         await PopulateLookupsAsync(vm, excludeId: id);
         return View(vm);
@@ -97,13 +120,31 @@ public class RepresentativesController(IRepresentativeService repService, IAppDb
             return View(vm);
         }
 
+        RepresentativeDetailDto current;
         try
         {
+            current = await repService.GetByIdAsync(id);
             await repService.UpdateAsync(id, ToRequest(vm));
         }
         catch (NotFoundException)
         {
             return NotFound();
+        }
+
+        if (current.ApplicationUserId is null && !string.IsNullOrWhiteSpace(vm.LoginPassword))
+        {
+            if (string.IsNullOrWhiteSpace(vm.Email))
+            {
+                ModelState.AddModelError(nameof(vm.Email), "Email is required to create a login account.");
+                await PopulateLookupsAsync(vm, excludeId: id);
+                return View(vm);
+            }
+
+            var (success, error) = await TryCreateLoginAsync(id, vm.FullName, vm.Email, vm.LoginPassword);
+            TempData["StatusMessage"] = success
+                ? "Representative updated and login account linked."
+                : $"Representative updated, but the login account could not be created: {error}";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         TempData["StatusMessage"] = "Representative updated successfully.";
@@ -126,6 +167,27 @@ public class RepresentativesController(IRepresentativeService repService, IAppDb
         }
 
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    private async Task<(bool Success, string? Error)> TryCreateLoginAsync(
+        int repId, string fullName, string email, string password)
+    {
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FullName = fullName,
+            RepresentativeId = repId,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+            return (false, string.Join("; ", result.Errors.Select(e => e.Description)));
+
+        await userManager.AddToRoleAsync(user, Roles.Representative);
+        await repService.LinkApplicationUserAsync(repId, user.Id);
+        return (true, null);
     }
 
     private async Task PopulateLookupsAsync(RepresentativeFormViewModel vm, int? excludeId = null)

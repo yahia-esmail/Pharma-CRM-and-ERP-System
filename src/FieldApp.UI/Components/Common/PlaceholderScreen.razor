@@ -1,0 +1,7 @@
+@* Stand-in for screens scheduled in later phases, so navigation and layout can be tested end to end now. *@
+<EmptyState Title="@Title" Message="@($"This screen is delivered in phase {Phase} of the plan.")" />
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public int Phase { get; set; }
+}

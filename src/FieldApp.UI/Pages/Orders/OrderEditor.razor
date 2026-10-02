@@ -1,0 +1,404 @@
+@page "/orders/new"
+@page "/orders/{Id:int}/edit"
+@page "/orders/draft/{LocalId:guid}"
+@using PharmaERP.Application.Orders
+@using PharmaERP.Application.Pharmacies
+@using PharmaERP.Application.Products
+@using PharmaERP.Domain.Enums
+@implements IDisposable
+@inject OrderEntryManager Orders
+@inject OrdersStore Store
+@inject MasterDataSync MasterData
+@inject PharmacyAccountCache Accounts
+@inject VisitSessionManager Visits
+@inject ILocationService Location
+@inject LocationTracker Tracker
+@inject NavigationManager Navigation
+
+<PageTitle>@(Id is null ? "New order" : $"Order #{Id}") · Field CRM</PageTitle>
+
+@*
+  Order entry (wireframe 9). Totals are worked out on the phone for display; the server prices every line
+  from its own catalogue. Everything typed is kept on the phone until Save draft / Submit.
+*@
+<a class="back-link" href="@BackUrl">‹ @(_fromVisit ? "Back to the visit" : "Orders")</a>
+
+@if (_loading)
+{
+    <div class="card-skeleton mt-2"></div>
+}
+else if (_error is not null)
+{
+    <EmptyState Title="Order not available" Message="@_error">
+        <a class="btn btn-outline-primary" href="orders">Back to Orders</a>
+    </EmptyState>
+}
+else if (_readOnly is { } view)
+{
+    <h1 class="page-title mt-2 mb-1">Order #@view.Id</h1>
+    <div class="text-secondary mb-2">@view.PharmacyName · @view.OrderDateUtc.ToLocalTime().ToString("dd MMM HH:mm")</div>
+    <OrderStepper Status="view.Status" />
+    @if (view.Status == OrderStatus.Rejected && !string.IsNullOrWhiteSpace(view.RejectionReason))
+    {
+        <div class="alert alert-danger py-2 small">Rejected: @view.RejectionReason</div>
+    }
+    <section class="app-card">
+        @foreach (var l in view.Lines)
+        {
+            <div class="order-line-row">
+                <span>@l.ProductName <span class="text-secondary">× @l.Quantity@(l.BonusQuantity > 0 ? $" + {l.BonusQuantity} bonus" : "")@(l.DiscountPercent > 0 ? $" · −{l.DiscountPercent:0.#}%" : "")</span></span>
+                <MoneyText Value="l.LineTotal" />
+            </div>
+        }
+        <div class="order-total-row net"><span>Net</span><MoneyText Value="view.TotalAmount" /></div>
+    </section>
+}
+else if (_draft is { } d)
+{
+    <h1 class="page-title mt-2 mb-1">@(d.ServerId is { } sid ? $"Edit order #{sid}" : "New order")</h1>
+    <OrderStepper Status="OrderStatus.Draft" />
+
+    <section class="app-card">
+        <label class="form-label fw-semibold" for="pharmacy">Pharmacy</label>
+        @if (_fromVisit)
+        {
+            <div class="d-flex justify-content-between align-items-center">
+                <strong>@d.PharmacyName</strong>
+                <span class="visit-badge ok">During visit</span>
+            </div>
+        }
+        else
+        {
+            <select id="pharmacy" class="form-select" value="@d.PharmacyId" @onchange="OnPharmacyChangedAsync">
+                <option value="0">Choose a pharmacy…</option>
+                @foreach (var p in _pharmacies)
+                {
+                    <option value="@p.Id">@p.Name@(p.City is { } c ? $" · {c}" : "")</option>
+                }
+            </select>
+        }
+    </section>
+
+    @if (d.PharmacyId > 0)
+    {
+        <PharmacyAccountCard Account="_account" Loading="_accountLoading" IsStale="_account is not null && _accountStale" />
+        @if (_account?.Data is { } a && OrderMath.ExceedsCredit(a.Ledger.OutstandingBalance, a.CreditLimit, d.Totals.Net))
+        {
+            <div class="alert alert-warning py-2 small" role="status">
+                This order takes the pharmacy past its credit limit (<MoneyText Value="a.CreditLimit" />). You can still submit it — approval may be refused.
+            </div>
+        }
+    }
+
+    <section class="app-card">
+        <h2 class="card-heading">Products</h2>
+        <ProductPicker Products="_products" OnPick="AddProductAsync" Placeholder="Search products to add…" />
+
+        @if (d.Lines.Count == 0)
+        {
+            <p class="small text-secondary mt-2 mb-0">No products yet.</p>
+        }
+        @for (var i = 0; i < d.Lines.Count; i++)
+        {
+            var index = i;
+            var line = d.Lines[i];
+            <div class="order-line">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <strong>@line.ProductName</strong>
+                        <div class="small text-secondary"><MoneyText Value="line.UnitPrice" /> each</div>
+                    </div>
+                    <button type="button" class="chip-remove" aria-label="Remove @line.ProductName" @onclick="() => RemoveLineAsync(index)">×</button>
+                </div>
+                <div class="order-line-inputs">
+                    <div>
+                        <span class="kpi-label">Qty</span>
+                        <div class="qty-stepper" role="group" aria-label="Quantity of @line.ProductName">
+                            <button type="button" aria-label="Fewer" @onclick="() => SetLineAsync(index, line with { Quantity = Math.Max(1, line.Quantity - 1) })">−</button>
+                            <input type="number" inputmode="numeric" min="1" value="@line.Quantity" aria-label="Quantity"
+                                   @onchange="e => SetLineAsync(index, line with { Quantity = ParseInt(e.Value, line.Quantity, min: 1) })" />
+                            <button type="button" aria-label="More" @onclick="() => SetLineAsync(index, line with { Quantity = line.Quantity + 1 })">+</button>
+                        </div>
+                    </div>
+                    <label>
+                        <span class="kpi-label">Bonus</span>
+                        <input class="form-control" type="number" inputmode="numeric" min="0" value="@line.BonusQuantity"
+                               @onchange="e => SetLineAsync(index, line with { BonusQuantity = ParseInt(e.Value, line.BonusQuantity, min: 0) })" />
+                    </label>
+                    <label>
+                        <span class="kpi-label">Disc. %</span>
+                        <input class="form-control" type="number" inputmode="decimal" min="0" max="100" step="0.5" value="@line.DiscountPercent"
+                               @onchange="e => SetLineAsync(index, line with { DiscountPercent = ParseDiscount(e.Value, line.DiscountPercent) })" />
+                    </label>
+                </div>
+                <div class="order-line-total"><MoneyText Value="line.Net" /></div>
+            </div>
+        }
+    </section>
+
+    var totals = d.Totals;
+    <section class="app-card order-totals">
+        <div class="order-total-row"><span>Subtotal</span><MoneyText Value="totals.Subtotal" /></div>
+        <div class="order-total-row"><span>Discount</span><span>− <MoneyText Value="totals.Discount" /></span></div>
+        @if (totals.BonusUnits > 0)
+        {
+            <div class="order-total-row"><span>Bonus units</span><span>@totals.BonusUnits free</span></div>
+        }
+        <div class="order-total-row net"><span>Net</span><MoneyText Value="totals.Net" /></div>
+        <div class="small text-secondary mt-1">Estimate from this phone's price list — the server's prices are final.</div>
+    </section>
+
+    @if (_sendError is not null)
+    {
+        <div class="alert alert-danger py-2 small">@_sendError</div>
+    }
+    <div class="order-submit">
+        <button class="btn btn-primary w-100" @onclick="() => SendAsync(submit: true)" disabled="@(_busy || d.PharmacyId <= 0 || d.IsEmpty)">
+            @(_locating ? "Getting your location…" : "Submit order")
+        </button>
+        <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-outline-primary flex-fill" @onclick="() => SendAsync(submit: false)" disabled="@(_busy || d.PharmacyId <= 0)">Save draft</button>
+            @if (_confirmDiscard)
+            {
+                <button class="btn btn-danger" @onclick="DiscardAsync">Discard changes</button>
+            }
+            else
+            {
+                <button class="btn btn-link text-danger" @onclick="() => _confirmDiscard = true" disabled="@_busy">Discard</button>
+            }
+        </div>
+        <div class="small text-secondary mt-2 text-center">Kept on this phone until you save or submit.</div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    [Parameter] public Guid? LocalId { get; set; }
+    [SupplyParameterFromQuery(Name = "pharmacyId")] public int? PharmacyQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "fromVisit")] public bool FromVisitQuery { get; set; }
+
+    private object? _loadedFor;
+    private bool _loading = true;
+    private string? _error;
+    private OrderDraft? _draft;
+    private bool _isNew;            // not stored on the phone until the first change
+    private OrderDetailDto? _readOnly;
+    private bool _fromVisit;
+    private IReadOnlyList<ProductListItemDto> _products = [];
+    private IReadOnlyList<PharmacyListItemDto> _pharmacies = [];
+    private Cached<PharmacyAccount>? _account;
+    private bool _accountLoading;
+    private bool _accountStale;
+    private bool _busy;
+    private bool _locating;
+    private bool _confirmDiscard;
+    private string? _sendError;
+
+    private string BackUrl => _fromVisit && _draft is { } d ? $"visits/pharmacy/{d.PharmacyId}" : "orders";
+
+    protected override void OnInitialized() => MasterData.Synced += OnMasterDataSynced;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        object key = (Id, LocalId, LocalId is null ? PharmacyQuery : null);
+        if (Equals(_loadedFor, key)) return;
+        _loadedFor = key;
+
+        _loading = true;
+        _error = null;
+        _draft = null;
+        _readOnly = null;
+        _isNew = false;
+        _fromVisit = false;
+        await LoadCatalogueAsync();
+
+        if (LocalId is { } localId)
+        {
+            _draft = await Orders.GetDraftAsync(localId);
+            if (_draft is null) _error = "This draft is no longer on the phone — it was sent or discarded.";
+        }
+        else if (Id is { } id)
+        {
+            _draft = await Orders.FindDraftForServerOrderAsync(id);
+            if (_draft is null)
+            {
+                var detail = await Store.GetDetailAsync(id);
+                if (detail is null) _error = "Connect to the internet once to open this order.";
+                else if (detail.Status != OrderStatus.Draft) _readOnly = detail;
+                else _draft = FromServer(detail);
+            }
+        }
+        else
+        {
+            _draft = new OrderDraft();
+            _isNew = true;
+            if (PharmacyQuery is { } pharmacyId) SetPharmacy(pharmacyId);
+        }
+
+        if (_draft is { } d)
+        {
+            // Taken during the open pharmacy visit → linked to it (and the back link returns there).
+            // GetOpenAsync, not Current: after the app is reopened the open visit is only in storage until loaded.
+            if (await Visits.GetOpenAsync() is { Kind: StopKind.Pharmacy } open && open.CustomerId == d.PharmacyId
+                && (FromVisitQuery || d.VisitLocalId == open.LocalId))
+            {
+                d.VisitLocalId = open.LocalId;
+                _fromVisit = true;
+            }
+            _loading = false;
+            await LoadAccountAsync();
+        }
+        _loading = false;
+    }
+
+    private async Task LoadCatalogueAsync()
+    {
+        _products = (await MasterData.GetProductsAsync())?.Data ?? [];
+        _pharmacies = (await MasterData.GetPharmaciesAsync())?.Data.OrderBy(p => p.Name).ToList() ?? [];
+    }
+
+    private void OnMasterDataSynced() => _ = InvokeAsync(async () =>
+    {
+        await LoadCatalogueAsync();
+        StateHasChanged();
+    });
+
+    private OrderDraft FromServer(OrderDetailDto detail) => new()
+    {
+        ServerId = detail.Id,
+        PharmacyId = detail.PharmacyId,
+        PharmacyName = detail.PharmacyName,
+        VisitLocalId = null,
+        Lines = detail.Lines.Select(l => new DraftLine(l.ProductId, l.ProductName, l.UnitPrice, l.Quantity, l.BonusQuantity, l.DiscountPercent)).ToList()
+    };
+
+    private void SetPharmacy(int pharmacyId)
+    {
+        if (_draft is null) return;
+        _draft.PharmacyId = pharmacyId;
+        _draft.PharmacyName = _pharmacies.FirstOrDefault(p => p.Id == pharmacyId)?.Name ?? "";
+    }
+
+    private async Task OnPharmacyChangedAsync(ChangeEventArgs e)
+    {
+        SetPharmacy(int.TryParse(e.Value?.ToString(), out var id) ? id : 0);
+        await SaveAsync();
+        await LoadAccountAsync();
+    }
+
+    private async Task LoadAccountAsync()
+    {
+        if (_draft is not { PharmacyId: > 0 } d) { _account = null; return; }
+        // The saved copy at once, then the server's when there's signal (same as the pharmacy visit screen).
+        _accountLoading = true;
+        _account = await Accounts.GetCachedAsync(d.PharmacyId);
+        _accountStale = _account is not null;
+        StateHasChanged();
+        var openedAt = DateTime.UtcNow;
+        _account = await Accounts.GetAsync(d.PharmacyId);
+        _accountStale = _account is not null && _account.SavedAtUtc < openedAt;
+        _accountLoading = false;
+    }
+
+    private async Task AddProductAsync(ProductListItemDto product)
+    {
+        if (_draft is not { } d) return;
+        var index = d.Lines.FindIndex(l => l.ProductId == product.Id);
+        if (index >= 0) d.Lines[index] = d.Lines[index] with { Quantity = d.Lines[index].Quantity + 1 };
+        else d.Lines.Add(new DraftLine(product.Id, product.Name, product.UnitPrice));
+        await SaveAsync();
+    }
+
+    private async Task SetLineAsync(int index, DraftLine line)
+    {
+        if (_draft is not { } d || index >= d.Lines.Count) return;
+        d.Lines[index] = line;
+        await SaveAsync();
+    }
+
+    private async Task RemoveLineAsync(int index)
+    {
+        if (_draft is not { } d || index >= d.Lines.Count) return;
+        d.Lines.RemoveAt(index);
+        await SaveAsync();
+    }
+
+    /// <summary>Keeps the draft on the phone. A brand-new order is stored on its first change, and the URL then
+    /// points at the stored draft so reopening the app lands back here.</summary>
+    private async Task SaveAsync()
+    {
+        if (_draft is not { } d) return;
+        _sendError = null;
+        await Orders.SaveLocalAsync(d);
+        if (_isNew)
+        {
+            _isNew = false;
+            _loadedFor = ((int?)null, (Guid?)d.LocalId, (int?)null);   // the URL below: same draft — don't reload
+            Navigation.NavigateTo($"orders/draft/{d.LocalId}{(_fromVisit ? "?fromVisit=true" : "")}", replace: true);
+        }
+    }
+
+    private async Task SendAsync(bool submit)
+    {
+        if (_draft is not { } d) return;
+        _busy = true;
+        _sendError = null;
+        try
+        {
+            var fix = submit ? await SubmitFixAsync() : null;
+            await Orders.SendAsync(d, submit, fix);
+            Navigation.NavigateTo(_fromVisit ? $"visits/pharmacy/{d.PharmacyId}" : "orders");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _sendError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            _locating = false;
+        }
+    }
+
+    /// <summary>Where the rep is at submit (plan phase 7, Event Fix). A recent tracked fix is reused; otherwise a
+    /// short best-effort fix. Never blocks the order: no location just means none is recorded.</summary>
+    private async Task<GeoFix?> SubmitFixAsync()
+    {
+        var last = Tracker.LastFix is { AccuracyMeters: <= 100 } l ? l : null;
+        if (last is not null && DateTime.UtcNow - last.DeviceTimestampUtc < TimeSpan.FromMinutes(2)) return last;
+
+        _locating = true;
+        StateHasChanged();
+        // A hard ceiling on the wait: the GPS may be busy with another fix (one at a time), and the rep must
+        // never stand there waiting to submit an order. Past it, the request finishes in the background.
+        GeoFix? fix = null;
+        try
+        {
+            var fixTask = Location.GetBestFixAsync(targetAccuracyMeters: 30, maxWaitMs: 8000);
+            if (await Task.WhenAny(fixTask, Task.Delay(TimeSpan.FromSeconds(10))) == fixTask) fix = (await fixTask).Fix;
+        }
+        catch (Exception)
+        {
+            // No location is fine: the order goes without one.
+        }
+        _locating = false;
+        // A slightly older tracked position still says roughly where the order was taken.
+        return fix ?? (last is not null && DateTime.UtcNow - last.DeviceTimestampUtc < TimeSpan.FromMinutes(10) ? last : null);
+    }
+
+    private async Task DiscardAsync()
+    {
+        if (_draft is { } d) await Orders.DiscardLocalAsync(d.LocalId);
+        Navigation.NavigateTo(BackUrl);
+    }
+
+    private static int ParseInt(object? value, int fallback, int min) =>
+        int.TryParse(value?.ToString(), out var n) ? Math.Max(min, n) : fallback;
+
+    private static decimal ParseDiscount(object? value, decimal fallback) =>
+        decimal.TryParse(value?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var n)
+            ? Math.Clamp(Math.Round(n, 2), 0, 100)
+            : fallback;
+
+    public void Dispose() => MasterData.Synced -= OnMasterDataSynced;
+}

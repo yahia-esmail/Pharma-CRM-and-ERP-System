@@ -1,0 +1,92 @@
+@page "/diagnostics"
+@attribute [AllowAnonymous]
+@using System.Reflection
+@using Microsoft.Extensions.Options
+@using PharmaERP.FieldApp.UI.Services
+@inject BrowserDevice Device
+@inject TokenStore Tokens
+@inject SessionState Session
+@inject IOptions<ApiOptions> Api
+@inject Outbox Outbox
+@inject SyncLoop Sync
+@inject MasterDataSync MasterData
+
+@* Hidden support screen (not in the nav): field support asks the rep to open /diagnostics and read it out. *@
+<PageTitle>Diagnostics · Field CRM</PageTitle>
+
+<h1 class="page-title">Diagnostics</h1>
+
+<table class="table table-sm diag-table">
+    <tbody>
+        <tr><th>App version</th><td>@AppVersion</td></tr>
+        <tr><th>API</th><td>@Api.Value.BaseUrl</td></tr>
+        <tr><th>Signed in</th><td>@(Tokens.Session?.FullName ?? "no")</td></tr>
+        <tr><th>Representative</th><td>@(Session.Profile?.RepresentativeId is { } repId ? $"{Session.Profile.EmployeeCode} (#{repId})" : "—")</td></tr>
+        @if (_info is { } i)
+        {
+            <tr><th>Online</th><td>@i.Online</td></tr>
+            <tr><th>Installed (standalone)</th><td>@i.Standalone</td></tr>
+            <tr><th>Service worker</th><td>@i.ServiceWorker</td></tr>
+            <tr><th>Location permission</th><td>@i.GeolocationPermission</td></tr>
+            <tr><th>Storage persisted</th><td>@(i.StoragePersisted?.ToString() ?? "unknown")</td></tr>
+            <tr><th>Storage used</th><td>@Mb(i.StorageUsageBytes) of @Mb(i.StorageQuotaBytes)</td></tr>
+            <tr><th>Browser</th><td class="small">@i.UserAgent</td></tr>
+        }
+        @if (_outbox is { } o)
+        {
+            <tr><th>Outbox</th><td>@o.Pending pending · @o.NeedsAttention need attention</td></tr>
+            <tr><th>Last sync run</th><td>@(Sync.LastRunAtUtc?.ToLocalTime().ToString("HH:mm:ss") ?? "—") @(Sync.LastRun is { } r ? $"({r.Sent} sent{(r.StoppedForConnectivity ? ", server unreachable" : "")})" : "")</td></tr>
+        }
+        @foreach (var d in _datasets)
+        {
+            <tr>
+                <th>Data: @d.Name</th>
+                <td>@(d.SavedAtUtc is { } at ? $"{d.Count} items · {at.ToLocalTime():ddd HH:mm}" : "not downloaded")@(d.LastError is { } e ? $" · last refresh failed ({e})" : "")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="d-grid gap-2">
+    <button class="btn btn-outline-secondary" @onclick="LoadAsync">Refresh</button>
+    @if (Tokens.Session is not null)
+    {
+        @* Support check for real devices: queue a harmless write and watch it reach the server. *@
+        <button class="btn btn-outline-secondary" @onclick="QueueTestOperationAsync">Queue test operation (location ping)</button>
+        <button class="btn btn-outline-secondary" @onclick="RefreshDataAsync">Re-download offline data</button>
+    }
+</div>
+
+@code {
+    private DeviceDiagnostics? _info;
+    private OutboxSummary? _outbox;
+    private IReadOnlyList<DatasetStatus> _datasets = [];
+
+    private static readonly string AppVersion =
+        typeof(Diagnostics).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _info = await Device.GetDiagnosticsAsync();
+        _outbox = await Outbox.GetSummaryAsync();
+        _datasets = await MasterData.GetStatusAsync();
+    }
+
+    private async Task QueueTestOperationAsync()
+    {
+        // Cairo city centre; clearly synthetic so it can't be mistaken for a real field position.
+        await Outbox.EnqueueAsync(new OutboxRequest("DiagnosticsPing", "Test location ping (diagnostics)", "POST",
+            "api/v1/Location/ping", new { latitude = 30.0444, longitude = 31.2357, timestampUtc = DateTime.UtcNow }));
+        await LoadAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        await MasterData.SyncAsync(force: true);
+        await LoadAsync();
+    }
+
+    private static string Mb(long? bytes) => bytes is { } b ? $"{b / 1024d / 1024d:0.0} MB" : "?";
+}

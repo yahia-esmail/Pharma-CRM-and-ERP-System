@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Request/response DTOs shared by Web.Api, Web.Mvc and the FieldApp PWA. Must stay free of
+       EF Core / ASP.NET dependencies so it can be referenced from Blazor WebAssembly. Types keep
+       their original namespaces (PharmaERP.Application.*, PharmaERP.Web.Api.Contracts) so moving
+       them here did not require touching any consumer. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\PharmaERP.Domain.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

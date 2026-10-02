@@ -1,0 +1,15 @@
+<span class="stop-status @Stop.Status.ToString().ToLowerInvariant()" title="@Title">@Text</span>
+
+@code {
+    [Parameter, EditorRequired] public PlanStop Stop { get; set; } = null!;
+
+    private string Text => Stop.Status switch
+    {
+        StopStatus.Done when Stop.VisitedAtUtc is { } at => $"Done {at.ToLocalTime():HH:mm}",
+        StopStatus.Done => "Done",
+        StopStatus.Next => "Next",
+        _ => "Pending"
+    };
+
+    private string? Title => Stop.VisitedLocallyOnly ? "Recorded on this phone — waiting to sync" : null;
+}

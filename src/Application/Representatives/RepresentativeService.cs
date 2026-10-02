@@ -69,6 +69,15 @@ public class RepresentativeService(IAppDbContext db) : IRepresentativeService
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task LinkApplicationUserAsync(int id, string applicationUserId, CancellationToken ct = default)
+    {
+        var rep = await db.Representatives.FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted, ct)
+            ?? throw new NotFoundException(nameof(Representative), id);
+
+        rep.ApplicationUserId = applicationUserId;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task ReassignTerritoryAsync(int id, int? newTerritoryId, CancellationToken ct = default)
     {
         var rep = await db.Representatives.FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted, ct)

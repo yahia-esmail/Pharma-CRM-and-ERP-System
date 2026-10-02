@@ -4,6 +4,12 @@ public interface ILocationService
 {
     Task RecordPingAsync(int representativeId, LocationPingRequest request, CancellationToken ct = default);
 
+    /// <summary>Stores up to <see cref="LocationPingBatchRequest.MaxPoints"/> points in one go — what the
+    /// field app uploads after buffering or being offline. Points whose client id is already stored are
+    /// skipped, so re-sending a batch is harmless.</summary>
+    Task<LocationPingBatchResult> RecordPingsAsync(int representativeId, IReadOnlyList<LocationPingRequest> points,
+        CancellationToken ct = default);
+
     /// <summary>Latest known point per representative today — pings and visit check-ins, whichever is most recent (spec 4.10 manager map view).</summary>
     Task<IReadOnlyList<RepresentativeLocationDto>> GetLatestLocationsAsync(int? territoryId, CancellationToken ct = default);
 

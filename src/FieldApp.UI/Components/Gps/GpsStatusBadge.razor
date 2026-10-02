@@ -1,0 +1,43 @@
+@implements IDisposable
+@inject LocationTracker Tracker
+
+@* Top-bar GPS state: live accuracy while tracking, otherwise why it isn't. *@
+<a class="gps-badge @CssClass" href="diagnostics/gps" title="@Title">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.94 3A9 9 0 0 0 13 3.06V1h-2v2.06A9 9 0 0 0 3.06 11H1v2h2.06A9 9 0 0 0 11 20.94V23h2v-2.06A9 9 0 0 0 20.94 13H23v-2zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14z" /></svg>
+    <span>@Label</span>
+</a>
+
+@code {
+    private string Label => Tracker.State switch
+    {
+        TrackingState.Tracking when Tracker.LastFix is { } fix => $"{fix.AccuracyMeters:0} m",
+        TrackingState.Tracking => "…",
+        TrackingState.PermissionDenied or TrackingState.Unavailable => "!",
+        _ => "off"
+    };
+
+    private string CssClass => Tracker.State switch
+    {
+        TrackingState.Tracking when Tracker.LastFix?.Quality is GeoFixQuality.Excellent or GeoFixQuality.Good => "good",
+        TrackingState.Tracking => "fair",
+        TrackingState.PermissionDenied or TrackingState.Unavailable => "bad",
+        _ => "idle"
+    };
+
+    private string Title => Tracker.State switch
+    {
+        TrackingState.Tracking => Tracker.RouteMode ? "Route mode on" : "Tracking during working hours",
+        TrackingState.NeedsConsent => "Location sharing not enabled",
+        TrackingState.OutsideWorkingHours => "Outside working hours — not tracking",
+        TrackingState.PausedInBackground => "Paused while the app is in the background",
+        TrackingState.PermissionDenied => "Location permission is blocked",
+        TrackingState.Unavailable => "Location is unavailable on this device",
+        _ => "GPS off"
+    };
+
+    protected override void OnInitialized() => Tracker.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Tracker.Changed -= OnChanged;
+}

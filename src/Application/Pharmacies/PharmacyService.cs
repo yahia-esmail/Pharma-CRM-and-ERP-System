@@ -7,7 +7,8 @@ using PharmaERP.Shared.Common;
 
 namespace PharmaERP.Application.Pharmacies;
 
-public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, IVisitValidationService visitValidation) : IPharmacyService
+public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, IVisitValidationService visitValidation,
+    IBusinessCalendar calendar) : IPharmacyService
 {
     public async Task<PagedResult<PharmacyListItemDto>> GetListAsync(PagedRequest request, int? territoryId,
         int? representativeId, CancellationToken ct = default)
@@ -34,7 +35,7 @@ public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, 
             .Take(request.PageSize)
             .Select(p => new
             {
-                p.Id, p.Name, p.City, p.Segment, p.Status,
+                p.Id, p.Name, p.City, p.Segment, p.Status, p.Latitude, p.Longitude,
                 PrimaryRepresentativeName = p.PrimaryRepresentative != null ? p.PrimaryRepresentative.FullName : null,
                 OutstandingBalance = db.Sales.Where(s => s.PharmacyId == p.Id).Sum(s => (decimal?)s.TotalAmount) ?? 0m
             })
@@ -43,7 +44,7 @@ public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, 
         return new PagedResult<PharmacyListItemDto>
         {
             Items = items.Select(p => new PharmacyListItemDto(p.Id, p.Name, p.City, p.Segment,
-                p.PrimaryRepresentativeName, p.OutstandingBalance, p.Status)).ToList(),
+                p.PrimaryRepresentativeName, p.OutstandingBalance, p.Status, p.Latitude, p.Longitude)).ToList(),
             TotalCount = totalCount,
             PageNumber = request.PageNumber,
             PageSize = request.PageSize
@@ -145,7 +146,7 @@ public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, 
             pharmacy.Latitude, pharmacy.Longitude, request.CheckInLatitude, request.CheckInLongitude,
             request.DurationMinutes, ct);
 
-        var visitDate = DateOnly.FromDateTime(request.VisitDateUtc);
+        var visitDate = calendar.DateOf(request.VisitDateUtc);
         int? visitPlanItemId;
         bool isPlanned;
 

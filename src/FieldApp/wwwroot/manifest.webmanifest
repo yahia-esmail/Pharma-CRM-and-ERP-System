@@ -1,0 +1,22 @@
+{
+  "name": "Pharma Field CRM",
+  "short_name": "Field CRM",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "en",
+  "background_color": "#f4f6f8",
+  "theme_color": "#1f4e79",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "shortcuts": [
+    { "name": "Today's Plan", "url": "./plan" },
+    { "name": "New order", "url": "./orders/new" },
+    { "name": "Orders", "url": "./orders" }
+  ]
+}

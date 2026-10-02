@@ -7,7 +7,7 @@ using PharmaERP.Shared.Common;
 
 namespace PharmaERP.Application.VisitPlans;
 
-public class VisitPlanService(IAppDbContext db, ICurrentUserService currentUser) : IVisitPlanService
+public class VisitPlanService(IAppDbContext db, ICurrentUserService currentUser, IBusinessCalendar calendar) : IVisitPlanService
 {
     public async Task<PagedResult<VisitPlanListItemDto>> GetListAsync(PagedRequest request, int? representativeId,
         VisitPlanStatus? status, CancellationToken ct = default)
@@ -168,7 +168,16 @@ public class VisitPlanService(IAppDbContext db, ICurrentUserService currentUser)
             .Include(i => i.Pharmacy)
             .OrderBy(i => i.Sequence)
             .Select(i => new VisitPlanItemDto(i.Id, i.DoctorId, i.Doctor != null ? i.Doctor.FullName : null,
-                i.PharmacyId, i.Pharmacy != null ? i.Pharmacy.Name : null, i.PlannedDate, i.Sequence, i.Notes))
+                i.PharmacyId, i.Pharmacy != null ? i.Pharmacy.Name : null, i.PlannedDate, i.Sequence, i.Notes,
+                i.Doctor != null ? i.Doctor.Latitude : i.Pharmacy != null ? i.Pharmacy.Latitude : null,
+                i.Doctor != null ? i.Doctor.Longitude : i.Pharmacy != null ? i.Pharmacy.Longitude : null,
+                i.Doctor != null ? i.Doctor.Specialty : i.Pharmacy != null ? i.Pharmacy.Segment : null,
+                i.Doctor != null && i.Doctor.Classification != null ? i.Doctor.Classification.Name : null,
+                i.Doctor != null ? i.Doctor.Address : i.Pharmacy != null ? i.Pharmacy.Address : null,
+                i.Doctor != null ? i.Doctor.City : i.Pharmacy != null ? i.Pharmacy.City : null,
+                // Visits are linked to their plan stop when recorded (see DoctorService/PharmacyService.AddVisit).
+                db.DoctorVisits.Where(v => v.VisitPlanItemId == i.Id && v.SessionStatus == VisitSessionStatus.Completed).Min(v => (DateTime?)v.VisitDateUtc)
+                    ?? db.PharmacyVisits.Where(v => v.VisitPlanItemId == i.Id && v.SessionStatus == VisitSessionStatus.Completed).Min(v => (DateTime?)v.VisitDateUtc)))
             .ToListAsync(ct);
     }
 
@@ -182,17 +191,17 @@ public class VisitPlanService(IAppDbContext db, ICurrentUserService currentUser)
             .FirstOrDefaultAsync(p => p.Id == visitPlanId && !p.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(VisitPlan), visitPlanId);
 
+        // Plan days are local business days; a visit at 01:00 Cairo time belongs to that day, not the UTC one.
+        var fromUtc = calendar.StartOfDayUtc(plan.StartDate);
+        var toUtc = calendar.StartOfDayUtc(plan.EndDate.AddDays(1));
+
         var actualDoctorVisits = await db.DoctorVisits.AsNoTracking()
-            .Where(v => v.RepresentativeId == plan.RepresentativeId
-                        && v.VisitDateUtc.Date >= plan.StartDate.ToDateTime(TimeOnly.MinValue)
-                        && v.VisitDateUtc.Date <= plan.EndDate.ToDateTime(TimeOnly.MinValue))
+            .Where(v => v.RepresentativeId == plan.RepresentativeId && v.VisitDateUtc >= fromUtc && v.VisitDateUtc < toUtc)
             .Select(v => new { v.DoctorId, v.VisitDateUtc })
             .ToListAsync(ct);
 
         var actualPharmacyVisits = await db.PharmacyVisits.AsNoTracking()
-            .Where(v => v.RepresentativeId == plan.RepresentativeId
-                        && v.VisitDateUtc.Date >= plan.StartDate.ToDateTime(TimeOnly.MinValue)
-                        && v.VisitDateUtc.Date <= plan.EndDate.ToDateTime(TimeOnly.MinValue))
+            .Where(v => v.RepresentativeId == plan.RepresentativeId && v.VisitDateUtc >= fromUtc && v.VisitDateUtc < toUtc)
             .Select(v => new { v.PharmacyId, v.VisitDateUtc })
             .ToListAsync(ct);
 
@@ -201,14 +210,14 @@ public class VisitPlanService(IAppDbContext db, ICurrentUserService currentUser)
             if (i.PharmacyId is { } pharmacyId)
             {
                 var pharmacyMatch = actualPharmacyVisits.FirstOrDefault(v => v.PharmacyId == pharmacyId
-                    && DateOnly.FromDateTime(v.VisitDateUtc) == i.PlannedDate);
+                    && calendar.DateOf(v.VisitDateUtc) == i.PlannedDate);
 
                 return new VisitPlanVarianceItemDto(null, null, pharmacyId, i.Pharmacy!.Name, i.PlannedDate,
                     pharmacyMatch is not null, pharmacyMatch?.VisitDateUtc);
             }
 
             var match = actualDoctorVisits.FirstOrDefault(v => v.DoctorId == i.DoctorId
-                && DateOnly.FromDateTime(v.VisitDateUtc) == i.PlannedDate);
+                && calendar.DateOf(v.VisitDateUtc) == i.PlannedDate);
 
             return new VisitPlanVarianceItemDto(i.DoctorId, i.Doctor!.FullName, null, null, i.PlannedDate,
                 match is not null, match?.VisitDateUtc);
@@ -237,6 +246,7 @@ public class VisitPlanService(IAppDbContext db, ICurrentUserService currentUser)
         plan.RejectionReason,
         plan.Items.OrderBy(i => i.PlannedDate).ThenBy(i => i.Sequence)
             .Select(i => new VisitPlanItemDto(i.Id, i.DoctorId, i.Doctor?.FullName,
-                i.PharmacyId, i.Pharmacy?.Name, i.PlannedDate, i.Sequence, i.Notes))
+                i.PharmacyId, i.Pharmacy?.Name, i.PlannedDate, i.Sequence, i.Notes,
+                i.Doctor?.Latitude ?? i.Pharmacy?.Latitude, i.Doctor?.Longitude ?? i.Pharmacy?.Longitude))
             .ToList());
 }

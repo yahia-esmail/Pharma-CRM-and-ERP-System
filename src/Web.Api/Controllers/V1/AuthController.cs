@@ -37,19 +37,18 @@ public class AuthController(SignInManager<ApplicationUser> signInManager, UserMa
     [HttpPost("refresh")]
     public async Task<ActionResult<LoginResponse>> Refresh(RefreshRequest request, CancellationToken ct)
     {
-        var userId = await tokenService.ValidateAndRevokeRefreshTokenAsync(request.RefreshToken, ct);
-        if (userId is null)
+        var rotation = await tokenService.RotateRefreshTokenAsync(request.RefreshToken, ct);
+        if (rotation is null)
             return Unauthorized(new ProblemDetails { Title = "Invalid or expired refresh token." });
 
-        var user = await userManager.FindByIdAsync(userId);
+        var user = await userManager.FindByIdAsync(rotation.UserId);
         if (user is null || !user.IsActive)
             return Unauthorized(new ProblemDetails { Title = "Invalid or expired refresh token." });
 
         var accessToken = await tokenService.CreateAccessTokenAsync(user);
-        var newRefreshToken = await tokenService.CreateRefreshTokenAsync(user.Id, ct);
         var roles = await userManager.GetRolesAsync(user);
 
-        return Ok(new LoginResponse(accessToken.Token, accessToken.ExpiresAtUtc, newRefreshToken, user.FullName, roles.ToList()));
+        return Ok(new LoginResponse(accessToken.Token, accessToken.ExpiresAtUtc, rotation.NewRefreshToken, user.FullName, roles.ToList()));
     }
 
     /// <summary>Revokes a refresh token so it can no longer be redeemed — the mobile app calls this on sign-out.</summary>

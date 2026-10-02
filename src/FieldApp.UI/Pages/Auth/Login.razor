@@ -1,0 +1,105 @@
+@page "/login"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject AuthService Auth
+@inject TokenStore Tokens
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in · Field CRM</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-brand">
+        <div class="auth-logo" aria-hidden="true">F</div>
+        <h1>Field CRM</h1>
+        <p class="text-secondary">Sign in to start your day</p>
+    </div>
+
+    <EditForm Model="_model" OnValidSubmit="SignInAsync" FormName="login">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="email">Email</label>
+            <InputText id="email" class="form-control form-control-lg" type="email" autocomplete="username"
+                       inputmode="email" @bind-Value="_model.Email" disabled="@_busy" />
+            <ValidationMessage For="() => _model.Email" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-group">
+                <InputText id="password" class="form-control form-control-lg" type="@(_showPassword ? "text" : "password")"
+                           autocomplete="current-password" @bind-Value="_model.Password" disabled="@_busy" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="() => _showPassword = !_showPassword">
+                    @(_showPassword ? "Hide" : "Show")
+                </button>
+            </div>
+            <ValidationMessage For="() => _model.Password" />
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger py-2" role="alert">@_error</div>
+        }
+
+        <button type="submit" class="btn btn-primary btn-lg w-100" disabled="@_busy">
+            @(_busy ? "Signing in…" : "Sign In")
+        </button>
+    </EditForm>
+
+    @* Biometric sign-in (Passkeys/WebAuthn) and "Forgot password" need API support first — plan phase 11. *@
+</div>
+
+@code {
+    private readonly LoginModel _model = new();
+    private bool _busy;
+    private bool _showPassword;
+    private string? _error;
+
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tokens.InitializeAsync();
+        if (Tokens.Session is not null) GoBack();
+    }
+
+    private async Task SignInAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var outcome = await Auth.LoginAsync(_model.Email, _model.Password);
+            _error = outcome switch
+            {
+                LoginOutcome.Succeeded => null,
+                LoginOutcome.InvalidCredentials => "Incorrect email or password.",
+                LoginOutcome.NotARepresentative => "This app is for field representatives. Please use the web portal.",
+                _ => "Can't reach the server. Check your connection and try again — the first sign-in needs internet."
+            };
+            if (outcome == LoginOutcome.Succeeded) GoBack();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        // Only follow local return URLs, never an absolute one smuggled into the query string.
+        var target = !string.IsNullOrEmpty(ReturnUrl) && !ReturnUrl.Contains("://") && !ReturnUrl.StartsWith("//")
+            ? ReturnUrl
+            : "";
+        Navigation.NavigateTo(target, replace: true);
+    }
+
+    private sealed class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = "";
+    }
+}

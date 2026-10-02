@@ -10,6 +10,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     {
         builder.Property(t => t.UserId).HasMaxLength(450);
         builder.Property(t => t.TokenHash).HasMaxLength(44); // SHA-256 digest, Base64-encoded
+        builder.Property(t => t.ReplacedByTokenHash).HasMaxLength(44);
 
         builder.HasIndex(t => t.TokenHash).IsUnique();
         builder.HasIndex(t => t.UserId);

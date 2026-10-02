@@ -12,6 +12,10 @@ public interface IOrderService
 
     Task<int> CreateDraftAsync(int representativeId, OrderCreateRequest request, CancellationToken ct = default);
 
+    /// <summary>Creates (<paramref name="orderId"/> null) or replaces a draft with all its lines, optionally
+    /// submitting it, in one transaction. Returns the order id.</summary>
+    Task<int> SaveDraftAsync(int representativeId, int? orderId, OrderSaveRequest request, CancellationToken ct = default);
+
     /// <summary>Edits order-level fields (currently just the destination pharmacy) — Draft only.</summary>
     Task UpdateAsync(int orderId, OrderUpdateRequest request, CancellationToken ct = default);
 

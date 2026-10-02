@@ -1,0 +1,7 @@
+@using PharmaERP.Domain.Enums
+
+<span class="order-status @OrderStatusText.CssClass(Status)">@Status</span>
+
+@code {
+    [Parameter, EditorRequired] public OrderStatus Status { get; set; }
+}

@@ -1,0 +1,40 @@
+@* Required reason for an out-of-geofence or location-less check-in; "Other" asks for free text. *@
+<div class="reason-picker mt-3">
+    <label class="form-label small fw-semibold">@Prompt</label>
+    @foreach (var reason in OutsideGeofenceReasons.All)
+    {
+        <label class="reason-option">
+            <input type="radio" name="reason-@_id" checked="@(_choice == reason)" @onchange="() => Choose(reason)" />
+            <span>@reason</span>
+        </label>
+    }
+    @if (_choice == "Other")
+    {
+        <input class="form-control mt-2" placeholder="Describe briefly" maxlength="200" value="@_other"
+               @oninput="e => SetOther(e.Value?.ToString())" />
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Prompt { get; set; } = "Reason";
+
+    private readonly string _id = Guid.NewGuid().ToString("N")[..8];
+    private string? _choice;
+    private string? _other;
+
+    private Task Choose(string reason)
+    {
+        _choice = reason;
+        return ValueChanged.InvokeAsync(reason == "Other" ? Blank(_other) : reason);
+    }
+
+    private Task SetOther(string? text)
+    {
+        _other = text;
+        return ValueChanged.InvokeAsync(Blank(text) is { } t ? $"Other: {t}" : null);
+    }
+
+    private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+}

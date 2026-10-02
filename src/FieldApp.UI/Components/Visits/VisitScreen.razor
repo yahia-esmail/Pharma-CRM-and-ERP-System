@@ -1,0 +1,222 @@
+@implements IDisposable
+@inject VisitSessionManager Visits
+@inject VisitTargetResolver Resolver
+@inject LocationTracker Tracker
+@inject NavigationManager Navigation
+
+@*
+  Shared shell of the doctor and pharmacy visit screens (wireframes 7 & 8): customer header with a map
+  preview, then either the check-in panel or — once checked in — the timer, the page's own form
+  (ChildContent) and check-out. Only one visit can be open at a time.
+*@
+@if (_loading)
+{
+    <div class="card-skeleton"></div>
+}
+else if (_target is null)
+{
+    <EmptyState Title="Customer not found" Message="This customer isn't in your offline data. Connect to the internet to refresh it.">
+        <a class="btn btn-outline-primary" href="plan">Back to Today's Plan</a>
+    </EmptyState>
+}
+else
+{
+    var t = _target;
+    <a class="back-link" href="plan">‹ Today's Plan</a>
+    <header class="visit-header">
+        <div>
+            <h1 class="page-title mb-1">@t.Name</h1>
+            @if (t.Detail is { } detail)
+            {
+                <div class="text-secondary">@detail</div>
+            }
+            @if (t.Place is { } place)
+            {
+                <div class="small text-secondary">@place</div>
+            }
+        </div>
+        <div class="visit-badges">
+            <span class="visit-badge @(t.IsPlanned ? "ok" : "neutral")">@(t.IsPlanned ? "Planned visit" : "Unplanned")</span>
+            @if (_open is { CheckInGeofence: { } fence } checkedIn)
+            {
+                <span class="visit-badge @(fence == GeofenceStatus.Inside ? "ok" : fence == GeofenceStatus.Outside ? "bad" : "warn")">
+                    @(fence switch
+                    {
+                        GeofenceStatus.Inside => "Location matched",
+                        GeofenceStatus.Outside => $"{GeoMath.FormatDistance(checkedIn.CheckInDistanceMeters ?? 0)} from customer",
+                        GeofenceStatus.Uncertain => "Location uncertain",
+                        _ => "Customer location new"
+                    })
+                </span>
+            }
+        </div>
+    </header>
+
+    @if (t.HasLocation || Tracker.LastFix is not null)
+    {
+        <MapView Markers="_markers" Self="Tracker.LastFix" Geofence="_fence" Height="170px" />
+    }
+
+    @if (_otherOpen is { } other)
+    {
+        <section class="app-card gps-card attention mt-3">
+            <h2 class="card-heading">Another visit is still open</h2>
+            <p class="small mb-2">You checked in at <strong>@other.CustomerName</strong>. Complete or cancel that visit before starting a new one.</p>
+            <a class="btn btn-primary w-100" href="@other.ScreenUrl">Go to @other.CustomerName</a>
+        </section>
+    }
+    else if (_open is null)
+    {
+        @BeforeCheckIn
+        <CheckInPanel Target="t" OnCheckedIn="OnCheckedIn" />
+    }
+    else
+    {
+        var open = _open;
+        <section class="app-card visit-running">
+            <div>
+                <div class="small text-secondary">Checked in @open.CheckInDeviceUtc.ToLocalTime().ToString("HH:mm")
+                    @if (open.CheckInFix is { } fix)
+                    {
+                        <span>· GPS ±@fix.AccuracyMeters.ToString("0") m</span>
+                    }
+                </div>
+                <VisitTimer StartedAtUtc="open.CheckInDeviceUtc" />
+            </div>
+            @if (open.DraftSavedAtUtc is { } saved)
+            {
+                <span class="small text-secondary">Draft saved @saved.ToLocalTime().ToString("HH:mm")</span>
+            }
+        </section>
+
+        @ChildContent(open)
+
+        <section class="app-card">
+            @if (!_completing)
+            {
+                <button class="btn btn-primary w-100" @onclick="() => _completing = true">Complete visit</button>
+                @if (_confirmCancel)
+                {
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-danger flex-fill" @onclick="CancelVisitAsync">Yes, cancel this visit</button>
+                        <button class="btn btn-outline-secondary" @onclick="() => _confirmCancel = false">Keep</button>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn btn-link w-100 text-danger mt-1" @onclick="() => _confirmCancel = true">Cancel visit</button>
+                }
+            }
+            else
+            {
+                <h2 class="card-heading">Check out</h2>
+                <p class="small text-secondary">Your location is recorded again when you leave.</p>
+                <LocationCapture ButtonText="Check out & save visit" OnCaptured="fix => CompleteAsync(fix)" OnFailed="_ => _checkoutFailed = true" />
+                @if (_checkoutFailed)
+                {
+                    <button class="btn btn-outline-primary w-100 mt-2" @onclick="() => CompleteAsync(null)">Save visit without check-out location</button>
+                }
+                <button class="btn btn-link w-100 mt-1" @onclick="() => _completing = false">Back to the visit</button>
+            }
+        </section>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public StopKind Kind { get; set; }
+    [Parameter, EditorRequired] public int CustomerId { get; set; }
+    [Parameter] public int? PlanItemId { get; set; }
+
+    /// <summary>The page's visit form, shown while checked in.</summary>
+    [Parameter, EditorRequired] public RenderFragment<OpenVisit> ChildContent { get; set; } = null!;
+
+    /// <summary>Optional content above the check-in panel (e.g. the pharmacy's account snapshot).</summary>
+    [Parameter] public RenderFragment? BeforeCheckIn { get; set; }
+
+    /// <summary>Product names for the check-out payload (doctor visits).</summary>
+    [Parameter] public IReadOnlyDictionary<int, string> ProductNames { get; set; } = new Dictionary<int, string>();
+
+    private (StopKind, int, int?)? _loadedFor;
+    private bool _loading = true;
+    private VisitTarget? _target;
+    private OpenVisit? _open;
+    private OpenVisit? _otherOpen;
+    private bool _completing;
+    private bool _checkoutFailed;
+    private bool _confirmCancel;
+    private IReadOnlyList<MapView.Marker> _markers = [];
+    private MapView.Fence? _fence;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The page re-renders this on every edit to its form (ChildContent always counts as changed);
+        // only reload when the screen is pointed at a different customer.
+        var key = (Kind, CustomerId, PlanItemId);
+        if (_loadedFor == key) return;
+        _loadedFor = key;
+
+        _loading = true;
+        _target = await Resolver.ResolveAsync(Kind, CustomerId, PlanItemId);
+        var open = await Visits.GetOpenAsync();
+        _open = open is not null && open.Kind == Kind && open.CustomerId == CustomerId ? open : null;
+        _otherOpen = open is not null && _open is null ? open : null;
+        BuildMap();
+        _loading = false;
+        Visits.Changed -= OnVisitsChanged;
+        Visits.Changed += OnVisitsChanged;
+        Tracker.Changed -= OnTrackerChanged;
+        Tracker.Changed += OnTrackerChanged;
+    }
+
+    private void BuildMap()
+    {
+        if (_target is { Latitude: { } lat, Longitude: { } lon } t)
+        {
+            _markers = [new MapView.Marker(lat, lon, t.Kind == StopKind.Doctor ? "D" : "P", t.Name,
+                t.Kind == StopKind.Doctor ? "#1f4e79" : "#6a4c93")];
+            _fence = new MapView.Fence(lat, lon, t.GeofenceRadiusMeters);
+        }
+        else
+        {
+            _markers = [];
+            _fence = null;
+        }
+    }
+
+    private void OnCheckedIn(OpenVisit open)
+    {
+        _open = open;
+        // A location captured at check-in may have just been applied to the offline copy.
+        _ = InvokeAsync(async () =>
+        {
+            _target = await Resolver.ResolveAsync(Kind, CustomerId, PlanItemId) ?? _target;
+            BuildMap();
+            StateHasChanged();
+        });
+    }
+
+    private async Task CompleteAsync(GeoFix? fix)
+    {
+        if (_open is null) return;
+        var name = _open.CustomerName;
+        await Visits.CompleteAsync(_open, fix, ProductNames);
+        Navigation.NavigateTo($"plan?completed={Uri.EscapeDataString(name)}");
+    }
+
+    private async Task CancelVisitAsync()
+    {
+        if (_open is null) return;
+        await Visits.CancelAsync(_open);
+        _open = null;
+        _confirmCancel = false;
+    }
+
+    private void OnVisitsChanged() => InvokeAsync(StateHasChanged);
+    private void OnTrackerChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Visits.Changed -= OnVisitsChanged;
+        Tracker.Changed -= OnTrackerChanged;
+    }
+}

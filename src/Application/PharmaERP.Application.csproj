@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Domain\PharmaERP.Domain.csproj" />
     <ProjectReference Include="..\Shared\PharmaERP.Shared.csproj" />
+    <ProjectReference Include="..\Contracts\PharmaERP.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,9 @@
 using PharmaERP.Domain.Common;
+using PharmaERP.Domain.Enums;
 
 namespace PharmaERP.Domain.Entities;
 
-public class DoctorVisit : AuditableEntity
+public class DoctorVisit : AuditableEntity, IFieldVisit
 {
     public int DoctorId { get; set; }
     public Doctor Doctor { get; set; } = null!;
@@ -37,4 +38,22 @@ public class DoctorVisit : AuditableEntity
     public bool LocationMismatch { get; set; }
     public bool OutsideTerritory { get; set; }
     public bool DurationTooShort { get; set; }
+
+    public VisitInterestLevel? InterestLevel { get; set; }
+
+    // Mobile check-in → check-out flow (IFieldVisit). Legacy single-request visits leave these null and
+    // read as Completed.
+    public VisitSessionStatus SessionStatus { get; set; }
+    public double? CheckInAccuracyMeters { get; set; }
+    public DateTime? CheckInDeviceTimeUtc { get; set; }
+    public DateTime? CheckInReceivedAtUtc { get; set; }
+    public double? CheckInClockOffsetSeconds { get; set; }
+    public double? CheckOutLatitude { get; set; }
+    public double? CheckOutLongitude { get; set; }
+    public double? CheckOutAccuracyMeters { get; set; }
+    public DateTime? CheckOutDeviceTimeUtc { get; set; }
+    public DateTime? CheckOutReceivedAtUtc { get; set; }
+    public double? CheckOutClockOffsetSeconds { get; set; }
+    public string? OutsideGeofenceReason { get; set; }
+    public bool DeviceClockSuspect { get; set; }
 }

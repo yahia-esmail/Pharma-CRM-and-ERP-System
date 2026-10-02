@@ -1,0 +1,113 @@
+@implements IDisposable
+@inject LocationTracker Tracker
+@inject ILocationService Location
+
+@*
+  Location onboarding (plan 7.7). Explains *before* the browser's permission prompt why location is
+  needed — people who understand the reason accept far more often — and, once blocked, shows how to
+  unblock it on this phone. Renders nothing when tracking is fine.
+*@
+@if (Tracker.State == TrackingState.NeedsConsent)
+{
+    <section class="app-card gps-card">
+        <h2 class="card-heading">Share your location during working hours</h2>
+        <p class="mb-2">
+            Field CRM records your position when you check in at a doctor or pharmacy and, while the app is open,
+            about every 50 m during working hours (@WorkingHours). This verifies visits and plans routes.
+        </p>
+        <p class="small text-secondary mb-3">Nothing is recorded outside working hours or while the app is closed.</p>
+        <button class="btn btn-primary w-100" @onclick="EnableAsync" disabled="@_busy">
+            @(_busy ? "Waiting for permission…" : "Enable location")
+        </button>
+        @if (_message is not null)
+        {
+            <p class="small text-danger mt-2 mb-0">@_message</p>
+        }
+    </section>
+}
+else if (Tracker.State == TrackingState.PermissionDenied)
+{
+    <section class="app-card gps-card attention">
+        <h2 class="card-heading">Location is blocked</h2>
+        <p class="mb-2">Check-ins and route verification need location. To turn it back on:</p>
+        @if (_platform == "ios")
+        {
+            <ol class="small mb-2">
+                <li>Open <strong>Settings → Privacy &amp; Security → Location Services</strong> and make sure it is on.</li>
+                <li>Scroll to <strong>Safari Websites</strong> (or this app, if installed) and choose <strong>While Using the App</strong>.</li>
+                <li>Come back here and tap <strong>Try again</strong>.</li>
+            </ol>
+        }
+        else if (_platform == "android")
+        {
+            <ol class="small mb-2">
+                <li>Tap the <strong>lock / tune icon</strong> next to the address bar (or long-press the app icon → App info).</li>
+                <li>Open <strong>Permissions → Location</strong> and choose <strong>Allow</strong>.</li>
+                <li>Make sure the phone's <strong>Location</strong> quick setting is on, then tap <strong>Try again</strong>.</li>
+            </ol>
+        }
+        else
+        {
+            <p class="small mb-2">Allow location for this site in your browser's site settings, then tap <strong>Try again</strong>.</p>
+        }
+        <button class="btn btn-outline-primary w-100" @onclick="EnableAsync" disabled="@_busy">Try again</button>
+    </section>
+}
+else if (Tracker.State == TrackingState.Unavailable)
+{
+    <section class="app-card gps-card attention">
+        <h2 class="card-heading">Can't get your location</h2>
+        <p class="small mb-2">Turn on <strong>Location</strong> in your phone's quick settings. If it's already on, move near a window or outdoors.</p>
+        <button class="btn btn-outline-primary w-100" @onclick="EnableAsync" disabled="@_busy">Try again</button>
+    </section>
+}
+
+@code {
+    [Inject] private Microsoft.Extensions.Options.IOptions<PharmaERP.FieldApp.UI.Services.GpsOptions> Gps { get; set; } = null!;
+
+    private bool _busy;
+    private string? _message;
+    private string? _platform;
+
+    private string WorkingHours => $"{Gps.Value.WorkingHoursStart:HH\\:mm}–{Gps.Value.WorkingHoursEnd:HH\\:mm}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Tracker.Changed += OnChanged;
+        _platform = await Location.GetPlatformAsync();
+    }
+
+    private async Task EnableAsync()
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            // A real fix request is what triggers the browser prompt (the Permissions API can only read the
+            // state), and it confirms location actually works rather than merely being allowed.
+            var result = await Location.GetBestFixAsync(Gps.Value.MaxAcceptedAccuracyMeters, 10000);
+            if (result.Succeeded)
+            {
+                await Tracker.RecordEventFixAsync(result.Fix!);
+                await Tracker.SetConsentAsync(true);
+            }
+            else if (result.Error == GeoError.Denied)
+            {
+                await Tracker.SetConsentAsync(true);   // they did agree; the browser is what blocks it
+                await Tracker.ReportPermissionDeniedAsync();
+            }
+            else
+            {
+                _message = result.UserMessage;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Tracker.Changed -= OnChanged;
+}

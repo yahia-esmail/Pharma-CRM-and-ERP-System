@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PharmaERP.Application.Collections;
+using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Notifications;
 using PharmaERP.Application.Warehouses;
@@ -54,7 +55,7 @@ public class NotificationScanService(IServiceScopeFactory scopeFactory, IOptions
         var settings = options.Value;
 
         await ScanVisitPlansPendingApprovalAsync(db, notificationService, settings, ct);
-        await ScanPlannedVisitsNotLoggedAsync(db, notificationService, ct);
+        await ScanPlannedVisitsNotLoggedAsync(db, notificationService, scope.ServiceProvider.GetRequiredService<IBusinessCalendar>(), ct);
         await ScanLowStockAsync(warehouseService, userDirectory, notificationService, ct);
         await ScanNearExpiryAsync(warehouseService, userDirectory, notificationService, settings, ct);
         await ScanCustodyBalanceAgingAsync(collectionService, db, userDirectory, notificationService, settings, ct);
@@ -83,11 +84,12 @@ public class NotificationScanService(IServiceScopeFactory scopeFactory, IOptions
     }
 
     /// <summary>Trigger 2 — yesterday's planned doctor visits that were never logged notify the rep and their DM.</summary>
-    private static async Task ScanPlannedVisitsNotLoggedAsync(IAppDbContext db, INotificationService notificationService, CancellationToken ct)
+    private static async Task ScanPlannedVisitsNotLoggedAsync(IAppDbContext db, INotificationService notificationService,
+        IBusinessCalendar calendar, CancellationToken ct)
     {
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
-        var dayStartUtc = yesterday.ToDateTime(TimeOnly.MinValue);
-        var dayEndUtc = yesterday.ToDateTime(TimeOnly.MaxValue);
+        var yesterday = calendar.Today.AddDays(-1);
+        var dayStartUtc = calendar.StartOfDayUtc(yesterday);
+        var dayEndUtc = calendar.StartOfDayUtc(yesterday.AddDays(1));
 
         var plannedItems = await db.VisitPlanItems.AsNoTracking()
             .Where(i => !i.IsDeleted && i.PlannedDate == yesterday && i.VisitPlan.Status == VisitPlanStatus.Approved)
@@ -99,7 +101,7 @@ public class NotificationScanService(IServiceScopeFactory scopeFactory, IOptions
         {
             var wasLogged = await db.DoctorVisits.AsNoTracking().AnyAsync(v => !v.IsDeleted
                 && v.DoctorId == item.DoctorId && v.RepresentativeId == item.RepresentativeId
-                && v.VisitDateUtc >= dayStartUtc && v.VisitDateUtc <= dayEndUtc, ct);
+                && v.VisitDateUtc >= dayStartUtc && v.VisitDateUtc < dayEndUtc, ct);
             if (wasLogged) continue;
 
             var message = $"Planned visit to {item.DoctorName} on {yesterday:yyyy-MM-dd} was not logged.";

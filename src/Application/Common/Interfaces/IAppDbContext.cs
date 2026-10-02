@@ -48,6 +48,7 @@ public interface IAppDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<FileAttachment> FileAttachments { get; }
     DbSet<Expense> Expenses { get; }
+    DbSet<CustomerLocationProposal> CustomerLocationProposals { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

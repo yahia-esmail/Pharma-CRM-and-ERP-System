@@ -1,0 +1,30 @@
+@implements IDisposable
+@inject Outbox Outbox
+
+@* Top-bar badge: how many operations are still on the phone. Red when some need the rep's attention. *@
+@if (_summary is { Total: > 0 } s)
+{
+    <a class="sync-indicator @(s.NeedsAttention > 0 ? "attention" : "")" href="sync"
+       title="@($"{s.Pending} waiting to sync, {s.NeedsAttention} need attention")">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 0 1 7.7 6H22l-3.5 4-3.5-4h2.6A6 6 0 0 0 6.3 8.3L4.9 6.9A8 8 0 0 1 12 4zm-7.7 10H2l3.5-4 3.5 4H6.4a6 6 0 0 0 11.3 1.7l1.4 1.4A8 8 0 0 1 4.3 14z" /></svg>
+        <span>@s.Total</span>
+    </a>
+}
+
+@code {
+    private OutboxSummary? _summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Outbox.Changed += OnChanged;
+        _summary = await Outbox.GetSummaryAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        _summary = await Outbox.GetSummaryAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Outbox.Changed -= OnChanged;
+}

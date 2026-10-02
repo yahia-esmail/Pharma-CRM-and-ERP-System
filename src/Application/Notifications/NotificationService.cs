@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Domain.Entities;
 
 namespace PharmaERP.Application.Notifications;
 
-public class NotificationService(IAppDbContext db) : INotificationService
+public class NotificationService(IAppDbContext db, IBusinessCalendar calendar) : INotificationService
 {
     public async Task<int> CreateAsync(string recipientUserId, string type, string message, string? relatedEntityType = null,
         int? relatedEntityId = null, CancellationToken ct = default)
@@ -27,7 +28,7 @@ public class NotificationService(IAppDbContext db) : INotificationService
     public async Task CreateIfNotAlreadyNotifiedTodayAsync(string recipientUserId, string type, string message,
         string? relatedEntityType, int? relatedEntityId, CancellationToken ct = default)
     {
-        var todayStartUtc = DateTime.UtcNow.Date;
+        var todayStartUtc = calendar.StartOfDayUtc(calendar.Today);
         var alreadyNotified = await db.Notifications.AsNoTracking().AnyAsync(n =>
             n.RecipientUserId == recipientUserId && n.Type == type && n.RelatedEntityId == relatedEntityId
             && n.CreatedAtUtc >= todayStartUtc, ct);

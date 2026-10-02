@@ -1,0 +1,183 @@
+@page "/diagnostics/gps"
+@using Microsoft.Extensions.Options
+@using PharmaERP.FieldApp.UI.Services
+@implements IDisposable
+@inject LocationTracker Tracker
+@inject MasterDataSync MasterData
+@inject IOptions<GpsOptions> Gps
+
+@*
+  Field evaluation screen (plan phase 4): shows raw GPS behaviour on the rep's actual phone — accuracy,
+  time to fix, tracking decisions — and the nearest customers by distance. Reached from the GPS badge.
+*@
+<PageTitle>GPS · Field CRM</PageTitle>
+
+<h1 class="page-title">GPS</h1>
+
+<LocationConsentCard />
+
+<section class="app-card">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="card-heading mb-0">Tracking</h2>
+        <span class="tracking-state @Tracker.State.ToString().ToLowerInvariant()">@StateText</span>
+    </div>
+    <div class="custody-row"><span>Route mode</span>
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="routeMode" checked="@Tracker.RouteMode"
+                   @onchange="e => Tracker.SetRouteModeAsync((bool)e.Value!)" />
+        </div>
+    </div>
+    @if (Tracker.RouteMode)
+    {
+        <div class="custody-row"><span>Route distance</span><span>@GeoMath.FormatDistance(Tracker.RouteDistanceMeters)</span></div>
+        <div class="custody-row"><span>Screen kept on</span><span>@(Tracker.WakeLockActive ? "yes" : "not supported")</span></div>
+        @if (_battery is { } b)
+        {
+            <div class="custody-row"><span>Battery</span><span>@((b * 100).ToString("0"))%</span></div>
+        }
+    }
+    <div class="custody-row"><span>Points kept this session</span><span>@Tracker.KeptToday</span></div>
+    <div class="custody-row"><span>Waiting to upload</span><span>@Tracker.BufferedCount</span></div>
+    <div class="custody-row"><span>Last reading</span><span>@(Tracker.LastDecision?.ToString() ?? "—")</span></div>
+    <FixSummary Fix="Tracker.LastFix" />
+    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" @onclick="Tracker.FlushAsync" disabled="@(Tracker.BufferedCount == 0)">Upload points now</button>
+</section>
+
+<section class="app-card">
+    <h2 class="card-heading">Check-in accuracy test</h2>
+    <p class="small text-secondary">Target ≤ @Gps.Value.TargetAccuracyMeters m within @(Gps.Value.MaxWaitMs / 1000) s — the same fix a check-in takes.</p>
+    <LocationCapture ButtonText="Take a check-in fix" OnCaptured="OnCaptured" />
+    @if (_captures.Count > 0)
+    {
+        <table class="table table-sm mt-3 mb-0 diag-table">
+            <thead><tr><th>Time</th><th>Accuracy</th><th>Samples</th><th>Took</th></tr></thead>
+            <tbody>
+                @foreach (var c in _captures)
+                {
+                    <tr>
+                        <td>@c.DeviceTimestampUtc.ToLocalTime().ToString("HH:mm:ss")</td>
+                        <td><span class="quality-chip @c.Quality.ToString().ToLowerInvariant()">@c.AccuracyMeters.ToString("0") m</span></td>
+                        <td>@c.SamplesCollected</td>
+                        <td>@((c.ElapsedMs / 1000.0).ToString("0.0")) s</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<MapView Markers="_markers" Self="CurrentFix" Geofence="_nearestFence" Height="280px" />
+
+<section class="app-card mt-3">
+    <h2 class="card-heading">Nearby customers</h2>
+    @if (CurrentFix is null)
+    {
+        <p class="small text-secondary mb-0">Take a fix (or wait for tracking) to rank customers by distance.</p>
+    }
+    else if (_nearby.Count == 0)
+    {
+        <p class="small text-secondary mb-0">No doctors or pharmacies with a saved location in your offline data.</p>
+    }
+    else
+    {
+        @foreach (var n in _nearby)
+        {
+            <div class="custody-row">
+                <span>@n.Name <span class="text-secondary small">· @n.Kind</span></span>
+                <span class="fw-semibold">@GeoMath.FormatDistance(n.DistanceMeters)</span>
+            </div>
+        }
+        @if (_nearestGeofence is { } g)
+        {
+            <div class="geofence-line @g.Status.ToString().ToLowerInvariant() mt-2">Nearest: @g.Describe()</div>
+        }
+    }
+</section>
+
+@code {
+    private sealed record Customer(string Name, string Kind, double Latitude, double Longitude, double RadiusMeters);
+    private sealed record NearbyCustomer(string Name, string Kind, double DistanceMeters);
+
+    private readonly List<GeoFix> _captures = [];
+    private List<Customer> _customers = [];
+    private IReadOnlyList<MapView.Marker> _markers = [];
+    private List<NearbyCustomer> _nearby = [];
+    private MapView.Fence? _nearestFence;
+    private GeofenceResult? _nearestGeofence;
+    private GeoFix? _rankedFor;
+    private double? _battery;
+
+    [Inject] private ILocationService Location { get; set; } = null!;
+
+    private GeoFix? CurrentFix => _captures.FirstOrDefault() is { } c && (Tracker.LastFix is null || c.DeviceTimestampUtc >= Tracker.LastFix.DeviceTimestampUtc)
+        ? c : Tracker.LastFix;
+
+    private string StateText => Tracker.State switch
+    {
+        TrackingState.Tracking => Tracker.RouteMode ? "Route mode" : "Tracking",
+        TrackingState.NeedsConsent => "Not enabled",
+        TrackingState.OutsideWorkingHours => $"Outside {Gps.Value.WorkingHoursStart:HH\\:mm}–{Gps.Value.WorkingHoursEnd:HH\\:mm}",
+        TrackingState.PausedInBackground => "Paused",
+        TrackingState.PermissionDenied => "Blocked",
+        TrackingState.Unavailable => "Unavailable",
+        _ => "Off"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Tracker.Changed += OnTrackerChanged;
+        await LoadCustomersAsync();
+        _battery = await Location.GetBatteryLevelAsync();
+        Rank();
+    }
+
+    private async Task LoadCustomersAsync()
+    {
+        var doctors = (await MasterData.GetDoctorsAsync())?.Data ?? [];
+        var pharmacies = (await MasterData.GetPharmaciesAsync())?.Data ?? [];
+        _customers =
+        [
+            .. doctors.Where(d => d.Latitude is not null && d.Longitude is not null)
+                .Select(d => new Customer(d.FullName, "Doctor", d.Latitude!.Value, d.Longitude!.Value, Gps.Value.GeofenceRadiusDoctorMeters)),
+            .. pharmacies.Where(p => p.Latitude is not null && p.Longitude is not null)
+                .Select(p => new Customer(p.Name, "Pharmacy", p.Latitude!.Value, p.Longitude!.Value, Gps.Value.GeofenceRadiusPharmacyMeters))
+        ];
+    }
+
+    private void Rank()
+    {
+        if (CurrentFix is not { } fix || fix == _rankedFor) return;
+        _rankedFor = fix;
+
+        var ranked = _customers
+            .Select(c => (Customer: c, Distance: GeoMath.DistanceMeters(fix.Latitude, fix.Longitude, c.Latitude, c.Longitude)))
+            .OrderBy(x => x.Distance)
+            .Take(8)
+            .ToList();
+        _nearby = ranked.Select(x => new NearbyCustomer(x.Customer.Name, x.Customer.Kind, x.Distance)).ToList();
+        _markers = ranked.Select((x, i) => new MapView.Marker(x.Customer.Latitude, x.Customer.Longitude, (i + 1).ToString(),
+            $"{x.Customer.Name} · {GeoMath.FormatDistance(x.Distance)}", x.Customer.Kind == "Doctor" ? "#1f4e79" : "#6a4c93")).ToList();
+
+        if (ranked.FirstOrDefault() is { Customer: { } nearest })
+        {
+            _nearestGeofence = Geofence.Evaluate(fix, nearest.Latitude, nearest.Longitude, nearest.RadiusMeters);
+            _nearestFence = new MapView.Fence(nearest.Latitude, nearest.Longitude, nearest.RadiusMeters,
+                _nearestGeofence.Status == GeofenceStatus.Inside ? "#1e8e3e" : _nearestGeofence.Status == GeofenceStatus.Outside ? "#c62828" : "#b26a00");
+        }
+    }
+
+    private void OnCaptured(GeoFix fix)
+    {
+        _captures.Insert(0, fix);
+        if (_captures.Count > 10) _captures.RemoveAt(_captures.Count - 1);
+        Rank();
+    }
+
+    private void OnTrackerChanged() => InvokeAsync(() =>
+    {
+        Rank();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Tracker.Changed -= OnTrackerChanged;
+}

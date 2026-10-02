@@ -1,0 +1,204 @@
+@page "/"
+@using PharmaERP.Application.Dashboard
+@inject DashboardApi DashboardApi
+@inject SessionState Session
+@inject KeyValueStore Storage
+@inject INetworkStatus Network
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@inject TodayPlanState Plan
+@implements IDisposable
+
+<PageTitle>Home · Field CRM</PageTitle>
+
+<section class="greeting">
+    <div>
+        <h1>@Greeting, @FirstName</h1>
+        <p class="text-secondary mb-0">
+            @(Session.Profile?.TerritoryName ?? "—")
+            @if (Session.Profile?.ReportingManagerName is { } manager)
+            {
+                <span> · Manager: @manager</span>
+            }
+        </p>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SignOutAsync(force: false)">Sign out</button>
+</section>
+
+@if (_unsyncedOnSignOut > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>@_unsyncedOnSignOut operation(s) haven't reached the server yet.</strong>
+        Signing out now deletes them from this phone. Connect to the internet and let them sync first.
+        <div class="d-flex gap-2 mt-2">
+            <a class="btn btn-sm btn-primary" href="sync">View pending</a>
+            <button class="btn btn-sm btn-outline-danger" @onclick="() => SignOutAsync(force: true)">Sign out anyway</button>
+            <button class="btn btn-sm btn-link" @onclick="() => _unsyncedOnSignOut = 0">Cancel</button>
+        </div>
+    </div>
+}
+
+<LocationConsentCard />
+
+@if (_dashboard is null)
+{
+    @if (_loading)
+    {
+        <div class="card-skeleton"></div>
+        <div class="card-skeleton"></div>
+    }
+    else
+    {
+        <EmptyState Title="No data yet" Message="Connect to the internet once to load your dashboard." />
+    }
+}
+else
+{
+    var d = _dashboard;
+    var (done, planned) = PlanProgress(d);
+    <section class="card app-card">
+        <div class="d-flex justify-content-between align-items-baseline">
+            <h2 class="card-heading">Today's Plan</h2>
+            <span class="fw-semibold">@done of @planned</span>
+        </div>
+        <div class="progress" role="progressbar" aria-valuenow="@Percent(done, planned)" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" style="width:@Percent(done, planned)%"></div>
+        </div>
+        @if (Plan.NextStop is { } next)
+        {
+            <a class="next-stop" href="@next.VisitUrl">
+                <span class="small text-secondary">Next stop</span>
+                <span class="next-stop-name">@next.Item.Sequence. @next.Name</span>
+                <span class="small">
+                    @next.Kind@(next.Item.Specialty is { } s ? $" · {s}" : "")
+                    @if (next.DistanceMeters is { } dist)
+                    {
+                        <strong> · @GeoMath.FormatDistance(dist) away</strong>
+                    }
+                </span>
+            </a>
+        }
+        else if (planned > 0 && done == planned)
+        {
+            <p class="small text-success mt-2 mb-0">All planned visits done today.</p>
+        }
+        <a class="btn btn-primary w-100 mt-3" href="plan">Open Today's Plan</a>
+    </section>
+
+    <section class="quick-actions" aria-label="Quick actions">
+        <a href="plan?filter=unplanned">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm1 10h-2V9H8V7h3V4h2v3h3v2h-3z" /></svg>
+            <span>Unplanned visit</span>
+        </a>
+        <a href="orders/new">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h-2l-1 2v2h2l3.6 7.6L8.2 18A2 2 0 0 0 10 21h10v-2H10.4l1.1-2h6.2a2 2 0 0 0 1.7-1l3.6-6.5L21.3 8H7.4z" /></svg>
+            <span>New order</span>
+        </a>
+        <a href="custody">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zm9 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5 8v2a2 2 0 0 0 2-2zm12 0a2 2 0 0 0 2 2V8zM5 16h2a2 2 0 0 0-2-2zm14 0v-2a2 2 0 0 0-2 2z" /></svg>
+            <span>Collection</span>
+        </a>
+        <a href="diagnostics/gps">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.94 3A9 9 0 0 0 13 3.06V1h-2v2.06A9 9 0 0 0 3.06 11H1v2h2.06A9 9 0 0 0 11 20.94V23h2v-2.06A9 9 0 0 0 20.94 13H23v-2z" /></svg>
+            <span>GPS check</span>
+        </a>
+    </section>
+
+    <section class="kpi-grid">
+        <div class="kpi"><span class="kpi-label">Orders</span><span class="kpi-value">@d.OrdersToday</span></div>
+        <div class="kpi"><span class="kpi-label">Sales</span><MoneyText Value="d.SalesToday" Compact Class="kpi-value" /></div>
+        <div class="kpi"><span class="kpi-label">Collections</span><MoneyText Value="d.CollectionsToday" Compact Class="kpi-value" /></div>
+        <div class="kpi">
+            <span class="kpi-label">Target Achv.</span>
+            <span class="kpi-value">@(d.SalesTargetAchievementPercent is { } p ? $"{p:0}%" : "—")</span>
+        </div>
+    </section>
+
+    <section class="card app-card">
+        <h2 class="card-heading">My Custody</h2>
+        <div class="custody-row">
+            <span>Stock on hand</span>
+            <span class="fw-semibold">@d.StockCustodySnapshot.Sum(s => s.Balance) units</span>
+        </div>
+        <div class="custody-row">
+            <span>Cash to remit</span>
+            <MoneyText Value="d.FinancialCustodySnapshot.OutstandingBalance" Class="fw-semibold" />
+        </div>
+        <a class="btn btn-outline-primary w-100 mt-2" href="custody">View custody</a>
+    </section>
+
+    @if (_savedAtUtc is { } savedAt)
+    {
+        <p class="last-updated">Last updated @savedAt.ToLocalTime().ToString("HH:mm")@(Network.IsOnline ? "" : " · offline")</p>
+    }
+}
+
+@code {
+    private RepresentativeDashboardDto? _dashboard;
+    private DateTime? _savedAtUtc;
+    private bool _loading = true;
+    private int _unsyncedOnSignOut;
+
+    private string FirstName => Session.Profile?.FullName.Split(' ', 2)[0] ?? "";
+
+    private static string Greeting => DateTime.Now.Hour switch
+    {
+        < 12 => "Good morning",
+        < 17 => "Good afternoon",
+        _ => "Good evening"
+    };
+
+    // The local plan also counts visits recorded on this phone that haven't synced yet, so prefer it
+    // once loaded; the dashboard API is the fallback before the plan has been downloaded.
+    private (int Done, int Planned) PlanProgress(RepresentativeDashboardDto d) =>
+        Plan.HasData ? (Plan.DoneCount, Plan.Stops.Count) : (d.CompletedVisitsToday, d.PlannedVisitsToday);
+
+    private static int Percent(int done, int planned) =>
+        planned == 0 ? 0 : (int)Math.Round(100.0 * done / planned);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Plan.Changed += OnPlanChanged;
+        await Plan.EnsureLoadedAsync();
+
+        // Cache first so the screen is usable instantly and offline; then refresh from the API.
+        if (await Storage.GetAsync<CachedDashboard>(StorageKeys.Dashboard) is { } cached)
+        {
+            _dashboard = cached.Data;
+            _savedAtUtc = cached.SavedAtUtc;
+        }
+
+        try
+        {
+            if (await DashboardApi.GetMineAsync() is { } fresh)
+            {
+                _dashboard = fresh;
+                _savedAtUtc = DateTime.UtcNow;
+                await Storage.SetAsync(StorageKeys.Dashboard, new CachedDashboard(fresh, _savedAtUtc.Value));
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Offline — the cached copy (if any) stays on screen.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SignOutAsync(bool force)
+    {
+        if (!force && (_unsyncedOnSignOut = await Auth.CountUnsyncedAsync()) > 0) return;
+
+        _unsyncedOnSignOut = 0;
+        await Auth.LogoutAsync();
+        Navigation.NavigateTo("login", replace: true);
+    }
+
+    private void OnPlanChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Plan.Changed -= OnPlanChanged;
+
+    private sealed record CachedDashboard(RepresentativeDashboardDto Data, DateTime SavedAtUtc);
+}

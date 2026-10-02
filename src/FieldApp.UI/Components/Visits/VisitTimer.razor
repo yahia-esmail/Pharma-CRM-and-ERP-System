@@ -1,0 +1,46 @@
+@implements IDisposable
+@inject TimeProvider Time
+
+@* Live visit duration. Counts from the persisted check-in time, so it survives closing the app. The
+   server computes the official duration itself; this is only what the rep sees. *@
+<span class="visit-timer" role="timer" aria-live="off">@Elapsed</span>
+
+@code {
+    [Parameter, EditorRequired] public DateTime StartedAtUtc { get; set; }
+
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
+    private string Elapsed
+    {
+        get
+        {
+            var span = Time.GetUtcNow().UtcDateTime - StartedAtUtc;
+            if (span < TimeSpan.Zero) span = TimeSpan.Zero;
+            return span.TotalHours >= 1 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"mm\:ss");
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1), Time);
+        _ = TickAsync(_cts.Token);
+    }
+
+    private async Task TickAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(ct))
+                await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+    }
+}

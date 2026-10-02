@@ -1,0 +1,14 @@
+<div class="empty-state">
+    <h2 class="empty-state-title">@Title</h2>
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p class="empty-state-message">@Message</p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

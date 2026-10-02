@@ -1,0 +1,22 @@
+@* One-line description of a fix, with a quality chip (plan 7.11 bands). *@
+@if (Fix is { } f)
+{
+    <div class="fix-summary">
+        <span class="quality-chip @f.Quality.ToString().ToLowerInvariant()">@f.Quality</span>
+        <span>±@f.AccuracyMeters.ToString("0") m · @f.DeviceTimestampUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+        @if (ShowDetails)
+        {
+            <span class="text-secondary">· @f.SamplesCollected sample(s) in @((f.ElapsedMs / 1000.0).ToString("0.0")) s</span>
+        }
+    </div>
+    @if (Geofence is { } g)
+    {
+        <div class="geofence-line @g.Status.ToString().ToLowerInvariant()">@g.Describe()</div>
+    }
+}
+
+@code {
+    [Parameter] public GeoFix? Fix { get; set; }
+    [Parameter] public GeofenceResult? Geofence { get; set; }
+    [Parameter] public bool ShowDetails { get; set; }
+}
