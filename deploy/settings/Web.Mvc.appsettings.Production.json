@@ -1,0 +1,12 @@
+{
+  "//": "Template for the dashboard's appsettings.Production.json. NO secrets here — ConnectionStrings__DefaultConnection, WebPush__PublicKey and WebPush__PrivateKey come from environment variables or a vault (see deploy/README.md). Storage paths must be the same folders as the API's.",
+  "Business": { "TimeZone": "Africa/Cairo" },
+  "WebPush": { "Subject": "mailto:it@example.com" },
+  "Storage": {
+    "KeysPath": "D:\PharmaERP\data\keys",
+    "UploadsPath": "D:\PharmaERP\data\uploads"
+  },
+  "ReverseProxy": { "KnownProxies": [] },
+  "Logging": { "LogLevel": { "Default": "Warning", "Microsoft.Hosting.Lifetime": "Information" } },
+  "AllowedHosts": "admin.example.com"
+}

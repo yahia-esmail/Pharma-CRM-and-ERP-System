@@ -1,0 +1,121 @@
+@using PharmaERP.Application.Pilot
+@model PilotReport
+@{
+    ViewData["Title"] = "Field Pilot Report";
+    string Pct(double? v) => v is null ? "—" : $"{v:0.#}%";
+    string Num(double? v, string unit) => v is null ? "—" : $"{v:0.#} {unit}";
+    // Green at or above the plan's target, amber within 10 points, red below.
+    string Target(double? v, double target) => v is null ? "" : v >= target ? "text-success fw-semibold" : v >= target - 10 ? "text-warning fw-semibold" : "text-danger fw-semibold";
+    // For "lower is better" rates (flags): amber from 5 %, red from 15 %.
+    string Flag(double? v) => v is null ? "" : v >= 15 ? "text-danger fw-semibold" : v >= 5 ? "text-warning" : "";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h4 class="mb-1">Field Pilot Report</h4>
+        <div class="text-secondary small">@Model.From.ToString("dd MMM yyyy") – @Model.To.ToString("dd MMM yyyy") · targets from the field app plan (section 7.1)</div>
+    </div>
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+        <div><label class="form-label small mb-0" for="from">From</label><input id="from" name="from" type="date" class="form-control form-control-sm" value="@Model.From.ToString("yyyy-MM-dd")" /></div>
+        <div><label class="form-label small mb-0" for="to">To</label><input id="to" name="to" type="date" class="form-control form-control-sm" value="@Model.To.ToString("yyyy-MM-dd")" /></div>
+        <div>
+            <label class="form-label small mb-0" for="territoryId">Territory</label>
+            <select id="territoryId" name="territoryId" class="form-select form-select-sm" asp-items="ViewBag.Territories"><option value="">All</option></select>
+        </div>
+        <button class="btn btn-sm btn-primary">Show</button>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Csv" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-territoryId="@ViewBag.TerritoryId"><i class="bi bi-download"></i> CSV</a>
+    </form>
+</div>
+
+@{ var t = Model.Total; }
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Check-ins within 30 m</div>
+        <div class="fs-4 @Target(t.Within30mPct, PilotReport.AccuracyTargetPct)">@Pct(t.Within30mPct)</div>
+        <div class="small text-secondary">target ≥ @PilotReport.AccuracyTargetPct% · median @Num(t.MedianAccuracyMeters, "m") · P90 @Num(t.P90AccuracyMeters, "m")</div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">GPS fix within 10 s</div>
+        <div class="fs-4 @Target(t.Within10sPct, PilotReport.FixTimeTargetPct)">@Pct(t.Within10sPct)</div>
+        <div class="small text-secondary">target ≥ @PilotReport.FixTimeTargetPct% · median @Num(t.MedianFixSeconds, "s")</div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Visits flagged: location mismatch</div>
+        <div class="fs-4 @Flag(t.MismatchPct)">@Pct(t.MismatchPct)</div>
+        <div class="small text-secondary">@t.Visits visits · @t.OutsideGeofenceReasons with a reason given</div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Visits left open (no check-out)</div>
+        <div class="fs-4 @(t.LeftOpen > 0 ? "text-warning fw-semibold" : "")">@t.LeftOpen</div>
+        <div class="small text-secondary">too short @Pct(t.TooShortPct) · clock suspect @Pct(t.ClockSuspectPct)</div>
+    </div></div></div>
+</div>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Representative</th><th class="text-end">Visits</th><th class="text-end">Days</th><th class="text-end">With GPS</th>
+                    <th class="text-end">≤ 30 m</th><th class="text-end">Median / P90</th><th class="text-end">Fix ≤ 10 s</th>
+                    <th class="text-end">Mismatch</th><th class="text-end">Outside terr.</th><th class="text-end">Too short</th><th class="text-end">Clock</th>
+                    <th class="text-end">Left open</th><th class="text-end">Avg min</th><th class="text-end">Track pts</th><th class="text-end">Proposals</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td>@r.Name<div class="small text-secondary">@r.Territory</div></td>
+                        <td class="text-end">@r.Visits</td>
+                        <td class="text-end">@r.ActiveDays</td>
+                        <td class="text-end">@Pct(r.WithLocationPct)</td>
+                        <td class="text-end @Target(r.Within30mPct, PilotReport.AccuracyTargetPct)">@Pct(r.Within30mPct)</td>
+                        <td class="text-end">@Num(r.MedianAccuracyMeters, "m") / @Num(r.P90AccuracyMeters, "m")</td>
+                        <td class="text-end @Target(r.Within10sPct, PilotReport.FixTimeTargetPct)">@Pct(r.Within10sPct)</td>
+                        <td class="text-end @Flag(r.MismatchPct)">@Pct(r.MismatchPct)</td>
+                        <td class="text-end @Flag(r.OutsideTerritoryPct)">@Pct(r.OutsideTerritoryPct)</td>
+                        <td class="text-end @Flag(r.TooShortPct)">@Pct(r.TooShortPct)</td>
+                        <td class="text-end @Flag(r.ClockSuspectPct)">@Pct(r.ClockSuspectPct)</td>
+                        <td class="text-end">@r.LeftOpen</td>
+                        <td class="text-end">@Num(r.AverageDurationMinutes, "")</td>
+                        <td class="text-end">@r.TrackPoints@(r.AnomalyPct is > 0 ? $" ({r.AnomalyPct:0.#}% jumps)" : "")</td>
+                        <td class="text-end">@r.LocationProposals</td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="15" class="text-center text-secondary py-3">No field app activity in this period.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h6>Why reps checked in away from the customer</h6>
+            @if (Model.TopOutsideReasons.Count == 0)
+            {
+                <p class="small text-secondary mb-0">No reasons given in this period.</p>
+            }
+            @foreach (var reason in Model.TopOutsideReasons)
+            {
+                <div class="d-flex justify-content-between small border-bottom py-1"><span>@reason.Reason</span><strong>@reason.Count</strong></div>
+            }
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body small">
+            <h6>Reading it</h6>
+            <ul class="mb-0 ps-3">
+                <li><strong>≤ 30 m below target</strong>: check where it happens (indoors, malls). Raising the geofence radius only hides the problem; asking reps to check in at the entrance usually fixes it.</li>
+                <li><strong>Many "Saved customer location is wrong"</strong>: review the pending location proposals — the stored coordinates are off.</li>
+                <li><strong>Fix &gt; 10 s</strong> on one phone only: a device or its location settings (battery saver, "high accuracy" off).</li>
+                <li><strong>Left open</strong>: visits checked in but never completed — the rep forgot, or the phone died before check-out.</li>
+                <li><strong>Clock suspect</strong>: the phone's clock was set by hand; ask the rep to turn on automatic time.</li>
+            </ul>
+        </div></div>
+    </div>
+</div>

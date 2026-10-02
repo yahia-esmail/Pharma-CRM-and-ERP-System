@@ -14,6 +14,9 @@
     <!-- The UI is English only: no ICU culture data to download, and dates/numbers look the same whatever language
          the phone is set to (an Arabic phone no longer gets Arabic month names in an English screen). -->
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Ship web.config (IIS: Brotli, security headers, revalidation — see the file). The SDK leaves it out for
+         browser-wasm unless asked. -->
+    <PublishIISAssets>true</PublishIISAssets>
   </PropertyGroup>
 
   <ItemGroup>

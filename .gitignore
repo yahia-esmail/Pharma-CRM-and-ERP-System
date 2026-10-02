@@ -11,3 +11,6 @@ obj/
 .uploads/
 
 node_modules/
+
+# Release output (deploy/publish.ps1)
+artifacts/

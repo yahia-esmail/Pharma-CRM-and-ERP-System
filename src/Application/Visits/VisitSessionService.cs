@@ -149,6 +149,7 @@ public class VisitSessionService(
         visit.CheckInLatitude = request.Location?.Latitude;
         visit.CheckInLongitude = request.Location?.Longitude;
         visit.CheckInAccuracyMeters = request.Location?.AccuracyMeters;
+        visit.CheckInFixElapsedMs = request.Location?.ElapsedMs is >= 0 and var ms ? ms : null;
         visit.CheckInDeviceTimeUtc = request.DeviceTimeUtc;
         visit.CheckInReceivedAtUtc = receivedAt;
         visit.CheckInClockOffsetSeconds = offset;

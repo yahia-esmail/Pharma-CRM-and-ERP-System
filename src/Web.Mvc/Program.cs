@@ -10,6 +10,7 @@ using PharmaERP.Infrastructure.Identity;
 using PharmaERP.Infrastructure.Persistence;
 using PharmaERP.Infrastructure.Security;
 using PharmaERP.Infrastructure.Services;
+using PharmaERP.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,12 +26,12 @@ builder.Services.AddApplication(builder.Configuration);
 // requests in some hosting environments (default OS-profile-based key storage isn't always usable).
 builder.Services.AddDataProtection()
     .SetApplicationName("PharmaErp")
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".keys")));
+    .PersistKeysToFileSystem(new DirectoryInfo(StoragePaths.Keys(builder.Configuration, builder.Environment)));
 
 // Collection-attachment/expense-receipt uploads (addendum 3.5/3.9) — a private folder outside wwwroot,
 // shared with Web.Api the same way the DataProtection key ring is above.
 builder.Services.AddSingleton<IFileStorageService>(new LocalFileStorageService(
-    Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".uploads")));
+    StoragePaths.Uploads(builder.Configuration, builder.Environment)));
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -45,6 +46,9 @@ builder.Services.AddAuthorization(options => options.AddPharmaPolicies());
 // Registered only here (not in Web.Api) so exactly one process runs the notification scan even though
 // both front ends share the same database (addendum 3.10).
 builder.Services.AddHostedService<NotificationScanService>();
+
+// Behind a reverse proxy: the real scheme for HTTPS redirection and secure cookies (see HostingExtensions).
+builder.Services.ConfigureForwardedHeaders(builder.Configuration);
 
 builder.Services.AddResponseCompression();
 builder.Services.AddHealthChecks()
@@ -65,6 +69,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
 app.UseResponseCompression();
 app.UseSecurityHeaders();
 app.UseHttpsRedirection();

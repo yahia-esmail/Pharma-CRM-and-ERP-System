@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IPharmacyService, PharmacyService>();
         services.AddScoped<IPharmacyBalanceCalculator, PharmacyBalanceCalculator>();
+        services.AddScoped<PharmaERP.Application.Pilot.IPilotReportService, PharmaERP.Application.Pilot.PilotReportService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISalesService, SalesService>();
         services.AddScoped<IWarehouseService, WarehouseService>();

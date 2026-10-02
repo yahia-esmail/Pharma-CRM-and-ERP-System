@@ -22,6 +22,9 @@ public interface IFieldVisit
     double? CheckInLatitude { get; set; }
     double? CheckInLongitude { get; set; }
     double? CheckInAccuracyMeters { get; set; }
+
+    /// <summary>How long the phone took to get the check-in fix (pilot KPI, plan 7.1: ≤ 10 s in 90 % of cases).</summary>
+    int? CheckInFixElapsedMs { get; set; }
     DateTime? CheckInDeviceTimeUtc { get; set; }
     DateTime? CheckInReceivedAtUtc { get; set; }
     double? CheckInClockOffsetSeconds { get; set; }

@@ -9,6 +9,9 @@ public class VisitFix
     public double Longitude { get; set; }
     public double? AccuracyMeters { get; set; }
     public DateTime? DeviceTimestampUtc { get; set; }
+
+    /// <summary>Time the phone spent getting this fix (Best-of-N), if it reports it.</summary>
+    public int? ElapsedMs { get; set; }
 }
 
 /// <summary>Starts a visit. <see cref="DeviceTimeUtc"/> is when the rep tapped Check-in, on the device

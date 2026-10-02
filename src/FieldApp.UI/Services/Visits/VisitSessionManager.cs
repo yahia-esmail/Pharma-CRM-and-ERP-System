@@ -204,7 +204,8 @@ public sealed class VisitSessionManager(
         Latitude = fix.Latitude,
         Longitude = fix.Longitude,
         AccuracyMeters = Math.Round(fix.AccuracyMeters, 1),
-        DeviceTimestampUtc = fix.DeviceTimestampUtc
+        DeviceTimestampUtc = fix.DeviceTimestampUtc,
+        ElapsedMs = fix.ElapsedMs
     };
 
     private static string? Join(IEnumerable<string> parts) => string.Join(", ", parts) is { Length: > 0 } s ? s : null;

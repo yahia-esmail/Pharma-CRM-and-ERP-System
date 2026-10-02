@@ -37,6 +37,7 @@ public class PharmacyVisit : AuditableEntity, IFieldVisit
     // read as Completed.
     public VisitSessionStatus SessionStatus { get; set; }
     public double? CheckInAccuracyMeters { get; set; }
+    public int? CheckInFixElapsedMs { get; set; }
     public DateTime? CheckInDeviceTimeUtc { get; set; }
     public DateTime? CheckInReceivedAtUtc { get; set; }
     public double? CheckInClockOffsetSeconds { get; set; }

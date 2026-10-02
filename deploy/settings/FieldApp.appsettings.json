@@ -1,0 +1,24 @@
+{
+  "//": "Copy over wwwroot/appsettings.json in the published field app (the publish script does it when -FieldAppSettings is given). Public file: every phone downloads it — no secrets, only the API address.",
+  "Api": { "BaseUrl": "https://api.example.com/" },
+  "Logging": { "LogLevel": { "Default": "Warning", "System.Net.Http.HttpClient": "Warning" } },
+  "Map": {
+    "TileUrl": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "Attribution": "&copy; OpenStreetMap contributors"
+  },
+  "Gps": {
+    "TargetAccuracyMeters": 20,
+    "MaxWaitMs": 15000,
+    "LowAccuracyOfferAfterMs": 20000,
+    "MaxAcceptedAccuracyMeters": 100,
+    "TrackDistanceMeters": 50,
+    "TrackIntervalSeconds": 180,
+    "MaxSpeedKmh": 150,
+    "UploadBatchSize": 20,
+    "UploadIntervalSeconds": 120,
+    "GeofenceRadiusDoctorMeters": 200,
+    "GeofenceRadiusPharmacyMeters": 200,
+    "WorkingHoursStart": "08:00",
+    "WorkingHoursEnd": "20:00"
+  }
+}

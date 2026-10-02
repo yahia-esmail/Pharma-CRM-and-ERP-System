@@ -14,6 +14,7 @@ using PharmaERP.Infrastructure.BackgroundServices;
 using PharmaERP.Infrastructure.Persistence;
 using PharmaERP.Infrastructure.Security;
 using PharmaERP.Infrastructure.Services;
+using PharmaERP.Infrastructure.Storage;
 using PharmaERP.Web.Api;
 using PharmaERP.Web.Api.Middleware;
 using PharmaERP.Web.Api.Security;
@@ -33,10 +34,10 @@ builder.Services.AddApplication(builder.Configuration);
 // profile storage that proved unstable during scaffolding (see Web.Mvc's Program.cs).
 builder.Services.AddDataProtection()
     .SetApplicationName("PharmaErp")
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".keys")));
+    .PersistKeysToFileSystem(new DirectoryInfo(StoragePaths.Keys(builder.Configuration, builder.Environment)));
 
 builder.Services.AddSingleton<IFileStorageService>(new LocalFileStorageService(
-    Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".uploads")));
+    StoragePaths.Uploads(builder.Configuration, builder.Environment)));
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt configuration section is missing.");
@@ -133,6 +134,9 @@ builder.Services.Configure<IdentityPasskeyOptions>(options =>
         && fieldAppOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase));
 });
 
+// Behind a reverse proxy: the real client IP (the sign-in rate limit keys on it) and scheme (see HostingExtensions).
+builder.Services.ConfigureForwardedHeaders(builder.Configuration);
+
 builder.Services.AddResponseCompression();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>();
@@ -151,6 +155,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseForwardedHeaders();
 app.UseResponseCompression();
 app.UseSecurityHeaders();
 app.UseHttpsRedirection();

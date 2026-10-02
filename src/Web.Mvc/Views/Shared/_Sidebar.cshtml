@@ -162,6 +162,11 @@
                     <i class="bi bi-pin-map"></i> Location Map
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link @ActiveClass("PilotReport")" asp-controller="PilotReport" asp-action="Index">
+                    <i class="bi bi-clipboard-data"></i> Field Pilot
+                </a>
+            </li>
         }
 
         @if (User.IsInRole(Roles.Admin))

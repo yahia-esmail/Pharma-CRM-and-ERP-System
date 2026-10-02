@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Options;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Notifications;
 using PharmaERP.Domain.Entities;
+using PharmaERP.Infrastructure.Storage;
 using WebPush;
 
 namespace PharmaERP.Infrastructure.Notifications;
@@ -21,7 +23,7 @@ public class WebPushOptions
     public string Subject { get; set; } = "mailto:admin@pharmaerp.local";
 
     /// <summary>VAPID keys (Base64url). In production set them from a secret store, never appsettings.json in git.
-    /// When empty, a key pair is generated once and kept in .keys/vapid.json (git-ignored), shared by the API and
+    /// When empty, a key pair is generated once and kept in vapid.json in the key folder (Storage:KeysPath, default .keys/ — git-ignored), shared by the API and
     /// the dashboard.</summary>
     public string? PublicKey { get; set; }
     public string? PrivateKey { get; set; }
@@ -32,7 +34,7 @@ public sealed class VapidKeyProvider
 {
     private readonly Lazy<VapidDetails> _details;
 
-    public VapidKeyProvider(IOptions<WebPushOptions> options, IHostEnvironment env, ILogger<VapidKeyProvider> logger)
+    public VapidKeyProvider(IOptions<WebPushOptions> options, IConfiguration configuration, IHostEnvironment env, ILogger<VapidKeyProvider> logger)
     {
         _details = new(() =>
         {
@@ -40,7 +42,7 @@ public sealed class VapidKeyProvider
             if (!string.IsNullOrWhiteSpace(o.PublicKey) && !string.IsNullOrWhiteSpace(o.PrivateKey))
                 return new VapidDetails(o.Subject, o.PublicKey, o.PrivateKey);
 
-            var file = Path.GetFullPath(Path.Combine(env.ContentRootPath, "..", "..", ".keys", "vapid.json"));
+            var file = Path.Combine(StoragePaths.Keys(configuration, env), "vapid.json");
             if (!File.Exists(file))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);

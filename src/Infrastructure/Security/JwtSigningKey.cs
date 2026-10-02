@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using PharmaERP.Infrastructure.Storage;
 
 namespace PharmaERP.Infrastructure.Security;
 
@@ -29,7 +30,7 @@ public static class JwtSigningKey
                 "Jwt:Key is not configured. Set it from a secret store (e.g. the environment variable Jwt__Key) — " +
                 "a Base64 string of at least 32 random bytes. It must never be stored in appsettings.json.");
 
-        var file = Path.GetFullPath(Path.Combine(environment.ContentRootPath, "..", "..", ".keys", "jwt-signing.key"));
+        var file = Path.Combine(StoragePaths.Keys(configuration, environment), "jwt-signing.key");
         if (!File.Exists(file))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);

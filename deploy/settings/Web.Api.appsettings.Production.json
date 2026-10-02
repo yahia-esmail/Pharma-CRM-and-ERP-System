@@ -1,0 +1,20 @@
+{
+  "//": "Template for the API's appsettings.Production.json. NO secrets here — they come from environment variables or a vault (see deploy/README.md): ConnectionStrings__DefaultConnection, Jwt__Key, WebPush__PublicKey, WebPush__PrivateKey.",
+  "Jwt": {
+    "Issuer": "PharmaErp.Api",
+    "Audience": "PharmaErp.Mobile",
+    "AccessTokenMinutes": 30,
+    "RefreshTokenDays": 14
+  },
+  "Business": { "TimeZone": "Africa/Cairo" },
+  "Cors": { "FieldAppOrigins": [ "https://field.example.com" ] },
+  "Passkeys": { "ServerDomain": "field.example.com" },
+  "WebPush": { "Subject": "mailto:it@example.com" },
+  "Storage": {
+    "KeysPath": "D:\PharmaERP\data\keys",
+    "UploadsPath": "D:\PharmaERP\data\uploads"
+  },
+  "ReverseProxy": { "KnownProxies": [] },
+  "Logging": { "LogLevel": { "Default": "Warning", "Microsoft.Hosting.Lifetime": "Information" } },
+  "AllowedHosts": "api.example.com"
+}
