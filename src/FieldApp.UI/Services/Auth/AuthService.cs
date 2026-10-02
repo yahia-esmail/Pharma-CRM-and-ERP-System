@@ -1,5 +1,6 @@
 using PharmaERP.FieldApp.UI.Services.Api;
 using PharmaERP.FieldApp.UI.Services.Location;
+using PharmaERP.FieldApp.UI.Services.Collections;
 using PharmaERP.FieldApp.UI.Services.Offline;
 using PharmaERP.FieldApp.UI.Services.Orders;
 using PharmaERP.FieldApp.UI.Services.Plan;
@@ -21,7 +22,8 @@ public sealed class AuthService(
     LocationTrackerRunner tracking,
     TodayPlanState plan,
     VisitSessionManager visits,
-    OrderEntryManager orders)
+    OrderEntryManager orders,
+    CollectionEntryManager collections)
 {
     public async Task<LoginOutcome> LoginAsync(string email, string password, CancellationToken ct = default)
     {
@@ -65,6 +67,7 @@ public sealed class AuthService(
         plan.Reset();
         visits.Reset();
         orders.Reset();
+        collections.Reset();
         await storage.ClearAsync();
         await tokens.ClearAsync();
         outbox.NotifyChanged();

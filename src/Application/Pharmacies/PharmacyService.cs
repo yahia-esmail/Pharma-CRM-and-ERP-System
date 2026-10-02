@@ -8,7 +8,7 @@ using PharmaERP.Shared.Common;
 namespace PharmaERP.Application.Pharmacies;
 
 public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, IVisitValidationService visitValidation,
-    IBusinessCalendar calendar) : IPharmacyService
+    IBusinessCalendar calendar, IPharmacyBalanceCalculator balances) : IPharmacyService
 {
     public async Task<PagedResult<PharmacyListItemDto>> GetListAsync(PagedRequest request, int? territoryId,
         int? representativeId, CancellationToken ct = default)
@@ -94,31 +94,21 @@ public class PharmacyService(IAppDbContext db, ICurrentUserService currentUser, 
         var pharmacy = await db.Pharmacies.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Pharmacy), id);
 
-        var sales = await db.Sales.AsNoTracking()
-            .Where(s => s.PharmacyId == id)
-            .OrderByDescending(s => s.SaleDateUtc)
-            .Select(s => new { s.Id, s.SaleDateUtc, s.TotalAmount })
-            .ToListAsync(ct);
-
+        var balance = await balances.GetAsync(id, ct);
         var today = DateTime.UtcNow;
-        var lines = sales.Select(s =>
+        var lines = balance.Sales.OrderByDescending(s => s.SaleDateUtc).Select(s =>
         {
             var dueDate = s.SaleDateUtc.AddDays(pharmacy.PaymentTermDays);
-            var daysOverdue = Math.Max(0, (today - dueDate).Days);
-            return new PharmacyLedgerLineDto(s.Id, s.SaleDateUtc, dueDate, s.TotalAmount, daysOverdue);
+            var daysOverdue = s.Open > 0 ? Math.Max(0, (today - dueDate).Days) : 0;
+            return new PharmacyLedgerLineDto(s.SaleId, s.SaleDateUtc, dueDate, s.Amount, daysOverdue, s.Paid, s.Open);
         }).ToList();
 
-        var totalSales = lines.Sum(l => l.Amount);
-        // Collections module landed in Phase 5. Aging buckets below are still computed against gross
-        // sales due dates (per-sale collection allocation would need an explicit settlement model);
-        // the headline totals are accurate since they're the pharmacy's full collected-to-date figure.
-        var totalCollected = await db.Collections.Where(c => c.PharmacyId == id).SumAsync(c => (decimal?)c.Amount, ct) ?? 0m;
-
+        // Aging is what's still unpaid on each invoice, by how overdue it is (not-yet-due counts as 0–30).
         return new PharmacyLedgerDto(
-            id, totalSales, totalCollected, totalSales - totalCollected,
-            lines.Where(l => l.DaysOverdue is >= 0 and <= 30).Sum(l => l.Amount),
-            lines.Where(l => l.DaysOverdue is > 30 and <= 60).Sum(l => l.Amount),
-            lines.Where(l => l.DaysOverdue > 60).Sum(l => l.Amount),
+            id, balance.TotalSales, balance.TotalCollected, balance.Outstanding,
+            lines.Where(l => l.DaysOverdue <= 30).Sum(l => l.Open),
+            lines.Where(l => l.DaysOverdue is > 30 and <= 60).Sum(l => l.Open),
+            lines.Where(l => l.DaysOverdue > 60).Sum(l => l.Open),
             lines);
     }
 

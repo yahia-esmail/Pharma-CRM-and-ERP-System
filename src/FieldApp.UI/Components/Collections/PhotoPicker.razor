@@ -1,0 +1,71 @@
+@* Proof-of-payment photos (wireframe 10). Opens the rear camera on phones (capture="environment"); each photo is
+   downscaled to a JPEG of at most 1600 px on the phone before it is stored or sent, so a 4 MB camera shot ends up
+   a few hundred KB. *@
+<div class="photo-picker">
+    @foreach (var slot in Slots)
+    {
+        var photo = Photos.FirstOrDefault(p => p.Label == slot);
+        <div class="photo-slot @(photo is null ? "empty" : "")">
+            @if (photo is not null)
+            {
+                <img src="@photo.DataUrl" alt="@slot" />
+                <button type="button" class="photo-remove" aria-label="Remove @slot" @onclick="() => RemoveAsync(photo)">×</button>
+                <span class="photo-label">@slot · @(photo.SizeBytes / 1024) KB</span>
+            }
+            else
+            {
+                <label class="photo-add">
+                    <InputFile accept="image/*" capture="environment" OnChange="e => AddAsync(e, slot)" disabled="@(_busy is not null)" />
+                    <span class="photo-plus" aria-hidden="true">@(_busy == slot ? "…" : "+")</span>
+                    <span class="photo-label">@slot</span>
+                </label>
+            }
+        </div>
+    }
+    @if (_error is not null)
+    {
+        <div class="small text-danger w-100">@_error</div>
+    }
+</div>
+
+@code {
+    private const int MaxSide = 1600;
+    private const long MaxCameraFileBytes = 25 * 1024 * 1024;
+
+    [Parameter, EditorRequired] public IReadOnlyList<string> Slots { get; set; } = [];
+    [Parameter] public List<CollectionPhoto> Photos { get; set; } = [];
+    [Parameter] public EventCallback PhotosChanged { get; set; }
+
+    private string? _busy;
+    private string? _error;
+
+    private async Task AddAsync(InputFileChangeEventArgs e, string slot)
+    {
+        _error = null;
+        _busy = slot;
+        try
+        {
+            var resized = await e.File.RequestImageFileAsync("image/jpeg", MaxSide, MaxSide);
+            await using var stream = resized.OpenReadStream(MaxCameraFileBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            Photos.RemoveAll(p => p.Label == slot);
+            Photos.Add(new CollectionPhoto(slot, $"{slot}.jpg", "image/jpeg", Convert.ToBase64String(buffer.ToArray())));
+            await PhotosChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Couldn't use that photo ({ex.Message}). Try taking it again.";
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private async Task RemoveAsync(CollectionPhoto photo)
+    {
+        Photos.Remove(photo);
+        await PhotosChanged.InvokeAsync();
+    }
+}

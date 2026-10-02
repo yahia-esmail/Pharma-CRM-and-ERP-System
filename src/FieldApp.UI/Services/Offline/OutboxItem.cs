@@ -34,6 +34,10 @@ public sealed class OutboxItem
     public string Url { get; init; } = "";
     public string? JsonBody { get; init; }
 
+    /// <summary>A file sent as multipart/form-data (field "file") instead of a JSON body — e.g. a proof-of-payment
+    /// photo. The bytes are stored on the phone next to the item until it is delivered or discarded.</summary>
+    public string? FileKey { get; init; }
+
     public Guid? DependsOn { get; init; }
     public string? ProducesRef { get; init; }
 
@@ -59,7 +63,11 @@ public sealed record OutboxRequest(
     object? Body = null,
     Guid? DependsOn = null,
     string? ProducesRef = null,
-    Guid? Id = null);
+    Guid? Id = null,
+    OutboxFile? File = null);
+
+/// <summary>A file queued for upload (bytes as Base64, so it round-trips through IndexedDB like everything else).</summary>
+public sealed record OutboxFile(string FileName, string ContentType, string Base64);
 
 public static class OutboxRefs
 {

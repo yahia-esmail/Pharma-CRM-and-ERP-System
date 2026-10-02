@@ -3,6 +3,7 @@ using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Notifications;
 using PharmaERP.Application.Orders;
+using PharmaERP.Application.Pharmacies;
 using PharmaERP.Application.Visits;
 using PharmaERP.Domain.Entities;
 using PharmaERP.Domain.Enums;
@@ -34,7 +35,8 @@ public class OrderSaveTests : IDisposable
     }
 
     private OrderService ServiceFor(int? representativeId, params string[] roles) =>
-        new(_db, null!, new NotificationService(_db, TestCalendar.Cairo()), new NoUsers(), new Caller(representativeId, roles));
+        new(_db, null!, new NotificationService(_db, TestCalendar.Cairo()), new NoUsers(), new Caller(representativeId, roles),
+            new PharmacyBalanceCalculator(_db));
 
     private OrderService Rep => ServiceFor(RepId, Roles.Representative);
 

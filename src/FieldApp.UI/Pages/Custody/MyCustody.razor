@@ -1,5 +1,285 @@
 @page "/custody"
+@using PharmaERP.Application.Custody
+@using PharmaERP.Domain.Enums
+@implements IDisposable
+@inject MasterDataSync MasterData
+@inject FinancialCustodyStore Financial
+@inject CollectionEntryManager Collections
+@inject Outbox Outbox
+@inject INetworkStatus Network
+@inject TimeProvider Time
+@inject NavigationManager Navigation
 
 <PageTitle>My Custody · Field CRM</PageTitle>
 
-<PlaceholderScreen Title="My Custody" Phase="8" />
+@*
+  My Custody (wireframe 5). Stock: what the rep holds per product and batch, with expiry warnings.
+  Financial: cash collected but not yet handed over — including collections still on the phone — and the
+  rep's own cash count against it.
+*@
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <h1 class="page-title mb-0">My Custody</h1>
+    <a class="btn btn-primary btn-sm" href="collections/new">+ Collection</a>
+</div>
+
+<div class="segmented" role="tablist">
+    <button type="button" role="tab" aria-selected="@(_tab == Tab.Stock ? "true" : "false")" class="@(_tab == Tab.Stock ? "active" : "")" @onclick="() => SetTab(Tab.Stock)">Stock</button>
+    <button type="button" role="tab" aria-selected="@(_tab == Tab.Financial ? "true" : "false")" class="@(_tab == Tab.Financial ? "active" : "")" @onclick="() => SetTab(Tab.Financial)">Financial</button>
+</div>
+
+@if (Saved)
+{
+    <div class="alert alert-success py-2 small" role="status">Collection saved@(Network.IsOnline ? "." : " — it will sync when you're back online.")</div>
+}
+
+@if (_tab == Tab.Stock)
+{
+    @if (_stock is null)
+    {
+        <EmptyState Title="Custody not downloaded yet" Message="Connect to the internet once to download your stock custody." />
+    }
+    else if (_stock.Data.Count == 0)
+    {
+        <EmptyState Title="No stock in your custody" Message="Products issued to you from the warehouse appear here." />
+    }
+    else
+    {
+        var rows = _stock.Data;
+        <section class="app-card">
+            <div class="d-flex justify-content-between align-items-baseline">
+                <span class="fw-semibold">@rows.Sum(r => r.Balance).ToString("N0") units in hand</span>
+                <span class="small text-secondary">as of @_stock.SavedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+            </div>
+            <div class="custody-totals">
+                <div><span class="kpi-label">Received</span><strong>@rows.Sum(r => r.Received).ToString("N0")</strong></div>
+                <div><span class="kpi-label">Sold</span><strong>@rows.Sum(r => r.Sold).ToString("N0")</strong></div>
+                <div><span class="kpi-label">Returned</span><strong>@rows.Sum(r => r.Returned).ToString("N0")</strong></div>
+            </div>
+        </section>
+
+        var expiring = rows.Where(r => r.Balance > 0 && (CustodyRules.IsNearExpiry(r.ExpiryDate, Today) || CustodyRules.IsExpired(r.ExpiryDate, Today))).ToList();
+        @if (expiring.Count > 0)
+        {
+            <div class="alert alert-warning py-2 small" role="status">
+                @expiring.Sum(r => r.Balance) unit(s) in @expiring.Count batch(es) expire within @CustodyRules.NearExpiryDays days or already have — sell or return them first.
+            </div>
+        }
+
+        @foreach (var product in rows.GroupBy(r => (r.ProductId, r.ProductName)).OrderBy(g => g.Key.ProductName))
+        {
+            <a class="app-card custody-product" href="custody/ledger/@product.Key.ProductId">
+                <div class="d-flex justify-content-between">
+                    <strong>@product.Key.ProductName</strong>
+                    <span class="fw-semibold">@product.Sum(r => r.Balance)</span>
+                </div>
+                @foreach (var batch in product.OrderBy(b => b.ExpiryDate))
+                {
+                    var expired = CustodyRules.IsExpired(batch.ExpiryDate, Today);
+                    var near = CustodyRules.IsNearExpiry(batch.ExpiryDate, Today);
+                    <div class="batch-row">
+                        <span>@(batch.BatchNumber ?? "No batch")@(batch.ExpiryDate is { } e ? $" · exp {e:MMM yyyy}" : "")</span>
+                        <span>
+                            @if (expired && batch.Balance > 0) { <span class="expiry-badge expired">Expired</span> }
+                            else if (near && batch.Balance > 0) { <span class="expiry-badge near">Near expiry</span> }
+                            @batch.Balance
+                        </span>
+                    </div>
+                }
+            </a>
+        }
+    }
+}
+else
+{
+    var unsynced = _pending.Sum(p => p.Amount);
+    @if (_financial is null && _pending.Count == 0)
+    {
+        <EmptyState Title="Financial custody not downloaded yet" Message="Connect to the internet once to see your collected cash." />
+    }
+    else
+    {
+        var custody = _financial?.Data.Custody;
+        var outstanding = (custody?.OutstandingBalance ?? 0) + unsynced;
+        <section class="app-card">
+            <div class="kpi-label">Cash with you (not yet handed over)</div>
+            <div class="custody-outstanding"><MoneyText Value="outstanding" /></div>
+            @if (unsynced > 0)
+            {
+                <div class="small text-secondary">Includes <MoneyText Value="unsynced" /> collected on this phone, not synced yet.</div>
+            }
+            <div class="custody-totals">
+                <div><span class="kpi-label">Collected</span><strong><MoneyText Value="(custody?.TotalCollected ?? 0) + unsynced" Compact /></strong></div>
+                <div><span class="kpi-label">Handed over</span><strong><MoneyText Value="custody?.TotalRemitted ?? 0" Compact /></strong></div>
+                <div><span class="kpi-label">Oldest unpaid</span><strong>@OldestAge(custody?.OldestUnremittedCollectionDateUtc)</strong></div>
+            </div>
+            @if (_financial is { } f)
+            {
+                <div class="small text-secondary mt-2">Server figures as of @f.SavedAtUtc.ToLocalTime().ToString("dd MMM HH:mm")</div>
+            }
+        </section>
+
+        <h2 class="section-label">Recent collections</h2>
+        @foreach (var p in _pending)
+        {
+            var collectionItem = _outboxItems.FirstOrDefault(i => i.Id == p.CollectionOutboxId);
+            var attention = collectionItem?.Status == OutboxStatus.NeedsAttention;
+            <div class="app-card collection-row local @(attention ? "attention" : "")">
+                <div>
+                    <strong>@p.PharmacyName</strong>
+                    <div class="order-meta">@Method(p.Method)@(p.ReferenceNumber is { } r ? $" · {r}" : "") · @p.CollectedAtUtc.ToLocalTime().ToString("HH:mm") · @p.PhotoOutboxIds.Count photo(s)</div>
+                    @if (attention && collectionItem?.LastError is { } error)
+                    {
+                        <div class="order-reason">@error — see <a href="sync">Pending sync</a></div>
+                    }
+                </div>
+                <div class="text-end">
+                    <MoneyText Value="p.Amount" Class="fw-semibold" />
+                    <span class="order-status @(attention ? "rejected" : "local")">@(attention ? "Needs attention" : "Waiting to sync")</span>
+                </div>
+            </div>
+        }
+        @if (_photosPending > 0)
+        {
+            <div class="small text-secondary mb-2">@_photosPending photo(s) still uploading.</div>
+        }
+        @foreach (var c in _financial?.Data.RecentCollections.Take(15) ?? [])
+        {
+            <div class="app-card collection-row">
+                <div>
+                    <strong>@c.PharmacyName</strong>
+                    <div class="order-meta">@Method(c.PaymentMethod)@(c.ReferenceNumber is { } r ? $" · {r}" : "") · @c.CollectionDateUtc.ToLocalTime().ToString("dd MMM HH:mm")@(c.AttachmentCount > 0 ? $" · {c.AttachmentCount} photo(s)" : "")</div>
+                </div>
+                <MoneyText Value="c.Amount" Class="fw-semibold" />
+            </div>
+        }
+        @if (_pending.Count == 0 && (_financial?.Data.RecentCollections.Count ?? 0) == 0)
+        {
+            <p class="small text-secondary">No collections yet.</p>
+        }
+
+        <section class="app-card mt-3">
+            <h2 class="card-heading">Count your cash</h2>
+            @if (_cashCountQueued)
+            {
+                <p class="small mb-0">Your count is waiting to sync.</p>
+            }
+            else
+            {
+                <p class="small text-secondary">Count the cash you hold and enter it. If it differs from <MoneyText Value="outstanding" />, explain why — your manager reviews the difference.</p>
+                <input class="form-control" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Counted amount"
+                       aria-label="Counted amount" @bind="_counted" />
+                @if (_counted is { } counted && counted != outstanding)
+                {
+                    <div class="small mt-2 @(counted < outstanding ? "text-danger" : "text-secondary")">
+                        Difference <MoneyText Value="counted - outstanding" />
+                    </div>
+                    <input class="form-control mt-2" maxlength="300" placeholder="Reason for the difference" aria-label="Reason" @bind="_reason" @bind:event="oninput" />
+                }
+                @if (_countError is not null)
+                {
+                    <div class="small text-danger mt-2">@_countError</div>
+                }
+                <button class="btn btn-outline-primary w-100 mt-2" @onclick="() => SubmitCountAsync(outstanding)" disabled="@(_counted is null)">Submit count</button>
+            }
+            @foreach (var r in _financial?.Data.Reconciliations.Take(3) ?? [])
+            {
+                <div class="reconciliation-row">
+                    <span>@r.ReconciliationDateUtc.ToLocalTime().ToString("dd MMM") · counted <MoneyText Value="r.CountedBalance" /> (<MoneyText Value="r.Variance" />)</span>
+                    <span class="order-status @(r.Status switch { FinancialReconciliationStatus.Approved => "approved", FinancialReconciliationStatus.Rejected => "rejected", _ => "submitted" })">@r.Status</span>
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    private enum Tab { Stock, Financial }
+
+    [SupplyParameterFromQuery(Name = "tab")] public string? TabQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "saved")] public string? SavedQuery { get; set; }
+
+    private Tab _tab = Tab.Stock;
+    private Cached<IReadOnlyList<RepStockCustodyBalanceDto>>? _stock;
+    private Cached<FinancialCustodySnapshot>? _financial;
+    private IReadOnlyList<PendingCollection> _pending = [];
+    private IReadOnlyList<OutboxItem> _outboxItems = [];
+    private int _photosPending;
+    private bool _cashCountQueued;
+    private decimal? _counted;
+    private string? _reason;
+    private string? _countError;
+
+    private bool Saved => SavedQuery == "1";
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.Equals(TabQuery, "financial", StringComparison.OrdinalIgnoreCase)) _tab = Tab.Financial;
+        MasterData.Synced += OnChanged;
+        Collections.Changed += OnChanged;
+        Outbox.Changed += OnChanged;
+
+        _stock = await MasterData.GetCustodyAsync();
+        _financial = await Financial.GetCachedAsync();
+        await LoadLocalAsync();
+        StateHasChanged();
+
+        if (Network.IsOnline)
+        {
+            await MasterData.RefreshAsync(MasterDataSync.Custody);
+            _stock = await MasterData.GetCustodyAsync();
+            _financial = await Financial.RefreshAsync() ?? _financial;
+        }
+    }
+
+    private async Task LoadLocalAsync()
+    {
+        _pending = await Collections.GetPendingAsync();
+        _outboxItems = await Outbox.GetItemsAsync();
+        _photosPending = await Collections.GetPendingPhotoCountAsync();
+        _cashCountQueued = await Collections.HasPendingCashCountAsync();
+    }
+
+    private void SetTab(Tab tab)
+    {
+        _tab = tab;
+        Navigation.NavigateTo($"custody?tab={tab.ToString().ToLowerInvariant()}", replace: true);
+    }
+
+    private async Task SubmitCountAsync(decimal outstanding)
+    {
+        _countError = null;
+        if (_counted is not { } counted) return;
+        if (counted != outstanding && string.IsNullOrWhiteSpace(_reason))
+        {
+            _countError = "Explain the difference before submitting.";
+            return;
+        }
+        await Collections.RequestCashCountAsync(counted, _reason);
+        _counted = null;
+        _reason = null;
+    }
+
+    private string OldestAge(DateTime? oldestUtc) =>
+        oldestUtc is { } d ? $"{Math.Max(0, (Time.GetUtcNow().UtcDateTime - d).Days)} d" : "—";
+
+    private static string Method(PaymentMethod m) => m == PaymentMethod.BankTransfer ? "Transfer" : m.ToString();
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        var hadPending = _pending.Count + (_cashCountQueued ? 1 : 0);
+        _stock = await MasterData.GetCustodyAsync();
+        await LoadLocalAsync();
+        // Something reached the server: pick up its figures.
+        if (_pending.Count + (_cashCountQueued ? 1 : 0) < hadPending && Network.IsOnline)
+            _financial = await Financial.RefreshAsync() ?? _financial;
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        MasterData.Synced -= OnChanged;
+        Collections.Changed -= OnChanged;
+        Outbox.Changed -= OnChanged;
+    }
+}

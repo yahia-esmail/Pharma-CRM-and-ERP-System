@@ -89,4 +89,8 @@ public static class StorageKeys
     public static string OrderDetail(int orderId) => $"cache:order:{orderId}";
     public const string OrderDrafts = "orders:drafts";
     public const string PendingOrders = "orders:pending";
+
+    public const string FinancialCustody = "cache:financialCustody";
+    public static string CustodyLedger(int productId) => $"cache:custodyLedger:{productId}";
+    public const string PendingCollections = "collections:pending";
 }

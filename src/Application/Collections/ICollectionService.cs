@@ -23,7 +23,8 @@ public interface ICollectionService
 
     /// <summary>Attaches a photo/scan of proof of payment to a Collection (addendum 3.5).</summary>
     Task<int> AddAttachmentAsync(int collectionId, string uploadedByUserId, string fileName, string contentType,
-        long sizeBytes, Stream content, CancellationToken ct = default);
+        long sizeBytes, Stream content, CancellationToken ct = default,
+        int? ownerRepresentativeId = null);
 
     Task<IReadOnlyList<CollectionAttachmentDto>> GetAttachmentsAsync(int collectionId, CancellationToken ct = default);
 

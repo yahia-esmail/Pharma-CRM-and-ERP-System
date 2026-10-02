@@ -25,4 +25,7 @@ public class Collection : AuditableEntity
     public PaymentMethod PaymentMethod { get; set; }
     public string? ReferenceNumber { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>How the amount is split across invoices; empty = applied to the oldest open invoices.</summary>
+    public ICollection<CollectionAllocation> Allocations { get; set; } = new List<CollectionAllocation>();
 }

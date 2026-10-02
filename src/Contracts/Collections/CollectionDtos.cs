@@ -18,15 +18,29 @@ public record CollectionDto(
 
 public record CollectionAttachmentDto(int Id, int CollectionId, string FileName, string ContentType, long SizeBytes, DateTime UploadedAtUtc);
 
+public record CollectionAllocationDto(int SaleId, decimal Amount);
+
+public class CollectionAllocationRequest
+{
+    public int SaleId { get; set; }
+    public decimal Amount { get; set; }
+}
+
 public class CollectionSaveRequest
 {
     public int PharmacyId { get; set; }
+
+    /// <summary>Single-invoice shortcut (older clients). Prefer <see cref="Allocations"/>.</summary>
     public int? SaleId { get; set; }
     public decimal Amount { get; set; }
     public DateTime? CollectionDateUtc { get; set; }
     public PaymentMethod PaymentMethod { get; set; }
     public string? ReferenceNumber { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>How the amount is split across this pharmacy's invoices (wireframe 10). May cover less than the
+    /// full amount; the rest is applied to the oldest open invoices.</summary>
+    public List<CollectionAllocationRequest>? Allocations { get; set; }
 }
 
 public record RemittanceTransactionDto(
@@ -71,6 +85,13 @@ public record FinancialReconciliationDto(
     string? ApprovedByUserId,
     DateTime? ApprovedAtUtc,
     string? RejectionReason);
+
+/// <summary>A rep's own cash count (field app): the representative is always the caller.</summary>
+public class MyFinancialReconciliationRequest
+{
+    public decimal CountedBalance { get; set; }
+    public string? Reason { get; set; }
+}
 
 public class FinancialReconciliationRequest
 {

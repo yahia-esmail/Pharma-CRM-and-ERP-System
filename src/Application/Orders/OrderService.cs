@@ -3,6 +3,7 @@ using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Custody;
 using PharmaERP.Application.Notifications;
+using PharmaERP.Application.Pharmacies;
 using PharmaERP.Domain.Entities;
 using PharmaERP.Domain.Enums;
 using PharmaERP.Shared.Common;
@@ -11,7 +12,7 @@ using PharmaERP.Shared.Security;
 namespace PharmaERP.Application.Orders;
 
 public class OrderService(IAppDbContext db, ICustodyService custodyService, INotificationService notificationService,
-    IUserDirectoryService userDirectory, ICurrentUserService currentUser) : IOrderService
+    IUserDirectoryService userDirectory, ICurrentUserService currentUser, IPharmacyBalanceCalculator balances) : IOrderService
 {
     private const int MaxLinesPerOrder = 200;
 
@@ -260,7 +261,8 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
         // block-vs-warn choice configurable per pharmacy/organization.
         if (order.Pharmacy.CreditLimit > 0)
         {
-            var outstanding = await db.Sales.Where(s => s.PharmacyId == order.PharmacyId).SumAsync(s => (decimal?)s.TotalAmount, ct) ?? 0m;
+            // Sales minus collections — counting sales alone would put every paying pharmacy over its limit eventually.
+            var outstanding = (await balances.GetAsync(order.PharmacyId, ct)).Outstanding;
             if (outstanding + total > order.Pharmacy.CreditLimit)
                 throw new ValidationFailedException(
                     $"Approving this order would exceed the pharmacy's credit limit ({order.Pharmacy.CreditLimit:C}). Current outstanding: {outstanding:C}.");

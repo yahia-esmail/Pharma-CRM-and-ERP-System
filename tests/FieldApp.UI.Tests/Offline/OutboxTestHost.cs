@@ -38,6 +38,11 @@ internal sealed class InMemoryOutboxStore : IOutboxStore
     public Task DeleteAsync(Guid id) { _items.Remove(id); return Task.CompletedTask; }
     public Task<int?> GetRefAsync(string reference) => Task.FromResult(_refs.TryGetValue(reference, out var id) ? id : (int?)null);
     public Task SaveRefAsync(string reference, int serverId) { _refs[reference] = serverId; return Task.CompletedTask; }
+
+    public Dictionary<string, OutboxFile> Files { get; } = [];
+    public Task SaveFileAsync(string key, OutboxFile file) { Files[key] = file; return Task.CompletedTask; }
+    public Task<OutboxFile?> GetFileAsync(string key) => Task.FromResult(Files.GetValueOrDefault(key));
+    public Task DeleteFileAsync(string key) { Files.Remove(key); return Task.CompletedTask; }
 }
 
 internal sealed record RecordedRequest(string Method, string Path, string? IdempotencyKey, string? Body);

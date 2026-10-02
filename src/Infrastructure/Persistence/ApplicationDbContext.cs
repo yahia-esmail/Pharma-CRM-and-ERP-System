@@ -35,6 +35,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ReturnTransaction> ReturnTransactions => Set<ReturnTransaction>();
     public DbSet<Collection> Collections => Set<Collection>();
     public DbSet<CollectionAttachment> CollectionAttachments => Set<CollectionAttachment>();
+    public DbSet<CollectionAllocation> CollectionAllocations => Set<CollectionAllocation>();
     public DbSet<FinancialReconciliation> FinancialReconciliations => Set<FinancialReconciliation>();
     public DbSet<RemittanceTransaction> RemittanceTransactions => Set<RemittanceTransaction>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
@@ -83,6 +84,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<Collection>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<FinancialReconciliation>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<CollectionAttachment>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<CollectionAllocation>().HasQueryFilter(e => !e.Collection.IsDeleted);
         builder.Entity<RemittanceTransaction>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<Supplier>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<PurchaseOrder>().HasQueryFilter(e => !e.IsDeleted);

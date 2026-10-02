@@ -109,7 +109,15 @@ public sealed partial class OutboxProcessor(
         // The device clock at the moment of *this* attempt (the body may have been queued hours ago offline):
         // the server compares it with its own clock to correct device timestamps (see IFieldVisit).
         request.Headers.Add(ClientSentAtHeader, time.GetUtcNow().UtcDateTime.ToString("O"));
-        if (body is not null)
+        if (item.FileKey is { } fileKey)
+        {
+            if (await store.GetFileAsync(fileKey) is not { } file)
+                return await RejectAsync(item, null, "The photo is no longer on this phone, so it can't be uploaded.");
+            var part = new ByteArrayContent(Convert.FromBase64String(file.Base64));
+            part.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            request.Content = new MultipartFormDataContent { { part, "file", file.FileName } };
+        }
+        else if (body is not null)
             request.Content = new StringContent(body.Value, Encoding.UTF8, "application/json");
 
         HttpResponseMessage response;
@@ -137,6 +145,7 @@ public sealed partial class OutboxProcessor(
                         logger.LogWarning("Outbox item {Kind} {Id} succeeded but returned no id for {Ref}", item.Kind, item.Id, reference);
                 }
                 await store.DeleteAsync(item.Id);
+                if (item.FileKey is { } delivered) await store.DeleteFileAsync(delivered);
                 outbox.NotifyChanged();
                 return Delivery.Delivered;
             }

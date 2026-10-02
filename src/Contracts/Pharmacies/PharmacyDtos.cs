@@ -57,10 +57,8 @@ public class PharmacySaveRequest
     public double? Longitude { get; set; }
 }
 
-/// <summary>
-/// Computed, never stored (spec 5.3) — total collected is always 0 until Phase 5 adds Collections,
-/// at which point outstanding = TotalSales - TotalCollected becomes a real number instead of a stand-in.
-/// </summary>
+/// <summary>Computed, never stored (spec 5.3): outstanding = total sales − total collected; aging buckets
+/// are the open (unpaid) part of each invoice, by days overdue.</summary>
 public record PharmacyLedgerDto(
     int PharmacyId,
     decimal TotalSales,
@@ -71,4 +69,7 @@ public record PharmacyLedgerDto(
     decimal Aging60Plus,
     IReadOnlyList<PharmacyLedgerLineDto> Lines);
 
-public record PharmacyLedgerLineDto(int SaleId, DateTime SaleDateUtc, DateTime DueDateUtc, decimal Amount, int DaysOverdue);
+/// <summary>One invoice. <see cref="Open"/> is what is still owed on it after collections (allocated ones first,
+/// then the rest oldest-invoice-first); aging buckets are computed from it.</summary>
+public record PharmacyLedgerLineDto(int SaleId, DateTime SaleDateUtc, DateTime DueDateUtc, decimal Amount, int DaysOverdue,
+    decimal Paid = 0, decimal Open = 0);

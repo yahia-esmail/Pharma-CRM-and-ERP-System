@@ -4,6 +4,7 @@ using Microsoft.JSInterop;
 using PharmaERP.FieldApp.UI.Services;
 using PharmaERP.FieldApp.UI.Services.Api;
 using PharmaERP.FieldApp.UI.Services.Location;
+using PharmaERP.FieldApp.UI.Services.Collections;
 using PharmaERP.FieldApp.UI.Services.Offline;
 using PharmaERP.FieldApp.UI.Services.Orders;
 using PharmaERP.FieldApp.UI.Services.Plan;
@@ -26,6 +27,7 @@ internal sealed class VisitTestHost
     public FakeApi Api => _outbox.Api;
     public InMemoryOutboxStore OutboxStore => _outbox.Store;
     public OutboxProcessor Processor => _outbox.Processor;
+    public Outbox Outbox => _outbox.Outbox;
     public Microsoft.Extensions.Time.Testing.FakeTimeProvider Clock => _outbox.Clock;
 
     public MasterDataSync MasterData { get; private set; } = null!;
@@ -34,6 +36,7 @@ internal sealed class VisitTestHost
     public PharmacyAccountCache Accounts { get; private set; } = null!;
     public OrderEntryManager Orders { get; private set; } = null!;
     public OrdersStore OrdersStore { get; private set; } = null!;
+    public CollectionEntryManager Collections { get; private set; } = null!;
 
     public VisitTestHost()
     {
@@ -54,6 +57,7 @@ internal sealed class VisitTestHost
         Accounts = new PharmacyAccountCache(pharmacies, Storage, Clock, NullLogger<PharmacyAccountCache>.Instance);
         Orders = new OrderEntryManager(Storage, _outbox.Outbox, _outbox.Store, Clock);
         OrdersStore = new OrdersStore(new OrdersApi(http), Storage, Clock, NullLogger<OrdersStore>.Instance);
+        Collections = new CollectionEntryManager(Storage, _outbox.Outbox, Clock);
     }
 
     public Task SeedAsync<T>(string dataset, params T[] items) =>

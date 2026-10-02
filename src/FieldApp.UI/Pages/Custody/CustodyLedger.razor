@@ -1,0 +1,75 @@
+@page "/custody/ledger/{ProductId:int}"
+@using PharmaERP.Application.Custody
+@using PharmaERP.Domain.Enums
+@inject CustodyLedgerStore Ledger
+@inject MasterDataSync MasterData
+
+<PageTitle>Custody ledger · Field CRM</PageTitle>
+
+@* Every movement of one product in and out of the rep's custody (plan phase 8 "Ledger لكل منتج"). *@
+<a class="back-link" href="custody">‹ My Custody</a>
+<h1 class="page-title mt-2 mb-1">@(_productName ?? "Product")</h1>
+@if (_ledger is { } l)
+{
+    <div class="small text-secondary mb-3">@l.Data.Count movement(s) · as of @l.SavedAtUtc.ToLocalTime().ToString("dd MMM HH:mm")</div>
+}
+
+@if (_loading)
+{
+    <div class="card-skeleton"></div>
+}
+else if (_ledger is null)
+{
+    <EmptyState Title="Ledger not available offline" Message="Connect to the internet once to load this product's movements." />
+}
+else if (_ledger.Data.Count == 0)
+{
+    <EmptyState Title="No movements yet" />
+}
+else
+{
+    <section class="app-card">
+        @foreach (var t in _ledger.Data.OrderByDescending(t => t.TransactionDateUtc))
+        {
+            var sign = CustodyRules.Sign(t.TransactionType);
+            <div class="ledger-row">
+                <div>
+                    <strong>@Label(t.TransactionType)</strong>
+                    <div class="order-meta">@t.TransactionDateUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")@(t.BatchNumber is { } b ? $" · batch {b}" : "")@(t.ReasonCode is { } r ? $" · {r}" : "")@(t.SaleId is { } s ? $" · sale #{s}" : "")</div>
+                </div>
+                <span class="ledger-qty @(sign > 0 ? "in" : "out")">@(sign > 0 ? "+" : "−")@Math.Abs(t.Quantity)</span>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+
+    private bool _loading = true;
+    private string? _productName;
+    private Cached<IReadOnlyList<CustodyTransactionDto>>? _ledger;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _productName = (await MasterData.GetCustodyAsync())?.Data.FirstOrDefault(c => c.ProductId == ProductId)?.ProductName
+                       ?? (await MasterData.GetProductsAsync())?.Data.FirstOrDefault(p => p.Id == ProductId)?.Name;
+        _ledger = await Ledger.GetAsync(ProductId);
+        _productName ??= _ledger?.Data.FirstOrDefault()?.ProductName;
+        _loading = false;
+    }
+
+    private static string Label(CustodyTransactionType t) => t switch
+    {
+        CustodyTransactionType.Received => "Received from warehouse",
+        CustodyTransactionType.Sold => "Sold",
+        CustodyTransactionType.Returned => "Returned to warehouse",
+        CustodyTransactionType.AdjustmentIncrease => "Stock count +",
+        CustodyTransactionType.AdjustmentDecrease => "Stock count −",
+        CustodyTransactionType.TransferIn => "Transfer in",
+        CustodyTransactionType.TransferOut => "Transfer out",
+        CustodyTransactionType.CustomerReturn => "Returned by customer",
+        _ => t.ToString()
+    };
+}

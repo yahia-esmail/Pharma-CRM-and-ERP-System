@@ -1,0 +1,237 @@
+@page "/collections/new"
+@using PharmaERP.Application.Pharmacies
+@using PharmaERP.Domain.Enums
+@inject CollectionEntryManager Collections
+@inject MasterDataSync MasterData
+@inject PharmacyAccountCache Accounts
+@inject VisitSessionManager Visits
+@inject NavigationManager Navigation
+
+<PageTitle>Record collection · Field CRM</PageTitle>
+
+@*
+  Collection entry (wireframe 10): amount, how it was paid, which invoices it settles, and photos of the
+  receipt or cheque. Works offline; the photos upload after the collection itself reaches the server.
+*@
+<a class="back-link" href="@BackUrl">‹ @(_fromVisit ? "Back to the visit" : "My Custody")</a>
+<h1 class="page-title mt-2">Record collection</h1>
+
+<section class="app-card">
+    <label class="form-label fw-semibold" for="pharmacy">Pharmacy</label>
+    @if (_fromVisit)
+    {
+        <div class="d-flex justify-content-between align-items-center">
+            <strong>@_draft.PharmacyName</strong>
+            <span class="visit-badge ok">During visit</span>
+        </div>
+    }
+    else
+    {
+        <select id="pharmacy" class="form-select" value="@_draft.PharmacyId" @onchange="OnPharmacyChangedAsync">
+            <option value="0">Choose a pharmacy…</option>
+            @foreach (var p in _pharmacies)
+            {
+                <option value="@p.Id">@p.Name@(p.City is { } c ? $" · {c}" : "")</option>
+            }
+        </select>
+    }
+</section>
+
+@if (_draft.PharmacyId > 0)
+{
+    <PharmacyAccountCard Account="_account" Loading="_accountLoading" IsStale="_accountStale" />
+}
+
+<section class="app-card">
+    <label class="form-label fw-semibold" for="amount">Amount collected (EGP)</label>
+    <input id="amount" class="form-control form-control-lg" type="number" inputmode="decimal" min="0" step="0.01"
+           value="@(_draft.Amount > 0 ? _draft.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
+           @onchange="OnAmountChanged" />
+
+    <div class="form-label fw-semibold mt-3">Payment method</div>
+    <div class="filter-chips mb-0" role="radiogroup" aria-label="Payment method">
+        @foreach (var method in Enum.GetValues<PaymentMethod>())
+        {
+            <button type="button" role="radio" aria-checked="@(_draft.Method == method ? "true" : "false")"
+                    class="chip @(_draft.Method == method ? "active" : "")" @onclick="() => SetMethod(method)">@MethodLabel(method)</button>
+        }
+    </div>
+
+    <label class="form-label fw-semibold mt-3" for="reference">@CollectionRules.ReferenceLabel(_draft.Method)</label>
+    <input id="reference" class="form-control" maxlength="100" @bind="_draft.ReferenceNumber" @bind:event="oninput" />
+</section>
+
+@if (OpenInvoices is { Count: > 0 } invoices)
+{
+    <section class="app-card">
+        <div class="d-flex justify-content-between align-items-baseline">
+            <h2 class="card-heading mb-1">Apply to invoices</h2>
+            @if (_draft.Amount > 0)
+            {
+                <button type="button" class="btn btn-sm btn-link px-0" @onclick="FillOldestFirst">Fill oldest first</button>
+            }
+        </div>
+        <p class="small text-secondary">Leave empty and the payment settles the oldest invoices first.</p>
+        @foreach (var line in invoices)
+        {
+            var allocated = Allocated(line.SaleId);
+            <div class="invoice-row @(line.DaysOverdue > 60 ? "overdue" : "")">
+                <div class="invoice-info">
+                    <strong>#@line.SaleId</strong> · @line.SaleDateUtc.ToLocalTime().ToString("dd MMM")
+                    <div class="small text-secondary">
+                        Open <MoneyText Value="line.Open" />@(line.DaysOverdue > 0 ? $" · {line.DaysOverdue} days overdue" : "")
+                    </div>
+                </div>
+                <input class="form-control invoice-amount" type="number" inputmode="decimal" min="0" step="0.01"
+                       aria-label="Amount for invoice @line.SaleId" placeholder="0"
+                       value="@(allocated > 0 ? allocated.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
+                       @onchange="e => SetAllocation(line, e.Value)" />
+            </div>
+        }
+        <div class="small mt-2 @(Unallocated < 0 ? "text-danger" : "text-secondary")">
+            @if (_draft.Allocations.Count == 0)
+            {
+                <span>All of it goes to the oldest invoices.</span>
+            }
+            else if (Unallocated >= 0)
+            {
+                <span>Split <MoneyText Value="_draft.Allocations.Sum(a => a.Amount)" /> · <MoneyText Value="Unallocated" /> goes to the oldest invoices.</span>
+            }
+            else
+            {
+                <span>The split is <MoneyText Value="-Unallocated" /> more than the amount collected.</span>
+            }
+        </div>
+    </section>
+}
+
+<section class="app-card">
+    <h2 class="card-heading">Proof of payment</h2>
+    <PhotoPicker Slots="CollectionRules.PhotoSlots(_draft.Method)" Photos="_draft.Photos" PhotosChanged="StateHasChanged" />
+    @if (_draft.Method == PaymentMethod.Cheque && _draft.Photos.Count < 2)
+    {
+        <div class="small text-secondary mt-2">Photograph both sides of the cheque.</div>
+    }
+
+    <label class="form-label fw-semibold mt-3" for="notes">Notes</label>
+    <textarea id="notes" class="form-control" rows="2" maxlength="500" @bind="_draft.Notes"></textarea>
+</section>
+
+@if (_problems.Count > 0)
+{
+    <div class="alert alert-danger py-2 small">@_problems[0]</div>
+}
+<button class="btn btn-primary w-100 mb-2" @onclick="SubmitAsync" disabled="@_busy">Save collection</button>
+<div class="small text-secondary text-center mb-3">Saved on this phone and sent as soon as there's signal.</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "pharmacyId")] public int? PharmacyQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "fromVisit")] public bool FromVisitQuery { get; set; }
+
+    private readonly CollectionDraft _draft = new();
+    private IReadOnlyList<PharmacyListItemDto> _pharmacies = [];
+    private Cached<PharmacyAccount>? _account;
+    private bool _accountLoading;
+    private bool _accountStale;
+    private bool _fromVisit;
+    private bool _busy;
+    private IReadOnlyList<string> _problems = [];
+
+    private string BackUrl => _fromVisit ? $"visits/pharmacy/{_draft.PharmacyId}" : "custody?tab=financial";
+
+    private IReadOnlyList<PharmacyLedgerLineDto>? OpenInvoices =>
+        _account?.Data.Ledger.Lines.Where(l => l.Open > 0).OrderBy(l => l.SaleDateUtc).ToList();
+
+    private decimal Unallocated => _draft.Amount - _draft.Allocations.Sum(a => a.Amount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _pharmacies = (await MasterData.GetPharmaciesAsync())?.Data.OrderBy(p => p.Name).ToList() ?? [];
+        if (PharmacyQuery is { } id)
+        {
+            SetPharmacy(id);
+            _fromVisit = FromVisitQuery && await Visits.GetOpenAsync() is { Kind: StopKind.Pharmacy } open && open.CustomerId == id;
+            await LoadAccountAsync();
+        }
+    }
+
+    private void SetPharmacy(int id)
+    {
+        _draft.PharmacyId = id;
+        _draft.PharmacyName = _pharmacies.FirstOrDefault(p => p.Id == id)?.Name ?? "";
+        _draft.Allocations.Clear();
+    }
+
+    private async Task OnPharmacyChangedAsync(ChangeEventArgs e)
+    {
+        SetPharmacy(int.TryParse(e.Value?.ToString(), out var id) ? id : 0);
+        await LoadAccountAsync();
+    }
+
+    private async Task LoadAccountAsync()
+    {
+        if (_draft.PharmacyId <= 0) { _account = null; return; }
+        _accountLoading = true;
+        _account = await Accounts.GetCachedAsync(_draft.PharmacyId);
+        _accountStale = _account is not null;
+        StateHasChanged();
+        var openedAt = DateTime.UtcNow;
+        _account = await Accounts.GetAsync(_draft.PharmacyId);
+        _accountStale = _account is not null && _account.SavedAtUtc < openedAt;
+        _accountLoading = false;
+    }
+
+    private void OnAmountChanged(ChangeEventArgs e) => _draft.Amount = ParseMoney(e.Value) ?? 0;
+
+    private void SetMethod(PaymentMethod method)
+    {
+        _draft.Method = method;
+        // Photos are per slot ("Cheque front"…); slots that don't apply to the new method are dropped.
+        var slots = CollectionRules.PhotoSlots(method);
+        _draft.Photos.RemoveAll(p => !slots.Contains(p.Label));
+    }
+
+    private decimal Allocated(int saleId) => _draft.Allocations.FirstOrDefault(a => a.SaleId == saleId)?.Amount ?? 0;
+
+    private void SetAllocation(PharmacyLedgerLineDto line, object? value)
+    {
+        _draft.Allocations.RemoveAll(a => a.SaleId == line.SaleId);
+        if (ParseMoney(value) is > 0 and var amount) _draft.Allocations.Add(new InvoiceAllocation(line.SaleId, amount));
+    }
+
+    private void FillOldestFirst()
+    {
+        _draft.Allocations = CollectionRules.OldestFirst(_draft.Amount, OpenInvoices ?? []).ToList();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _problems = CollectionRules.Validate(_draft, OpenInvoices);
+        if (_problems.Count > 0) return;
+        _busy = true;
+        try
+        {
+            await Collections.SendAsync(_draft);
+            Navigation.NavigateTo(_fromVisit ? $"visits/pharmacy/{_draft.PharmacyId}" : "custody?tab=financial&saved=1");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _problems = [ex.Message];
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string MethodLabel(PaymentMethod m) => m switch
+    {
+        PaymentMethod.BankTransfer => "Bank transfer",
+        _ => m.ToString()
+    };
+
+    private static decimal? ParseMoney(object? value) =>
+        decimal.TryParse(value?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var n)
+            ? Math.Round(Math.Max(0, n), 2)
+            : null;
+}

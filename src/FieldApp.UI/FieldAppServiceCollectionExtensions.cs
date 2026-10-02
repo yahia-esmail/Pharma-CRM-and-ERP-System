@@ -8,6 +8,7 @@ using PharmaERP.FieldApp.UI.Services.Device;
 using PharmaERP.FieldApp.UI.Services.Location;
 using PharmaERP.FieldApp.UI.Services.Offline;
 using PharmaERP.FieldApp.UI.Services.Orders;
+using PharmaERP.FieldApp.UI.Services.Collections;
 using PharmaERP.FieldApp.UI.Services.Plan;
 using PharmaERP.FieldApp.UI.Services.Visits;
 using PharmaERP.FieldApp.UI.Services.Storage;
@@ -58,6 +59,7 @@ public static class FieldAppServiceCollectionExtensions
         AddApi<VisitPlansApi>();
         AddApi<CustodyApi>();
         AddApi<OrdersApi>();
+        AddApi<CollectionsApi>();
 
         // Offline-first (plan 8): every write is queued in the outbox and delivered by the sync loop.
         services.AddHttpClient(OutboxProcessor.HttpClientName, c => c.BaseAddress = apiBaseUri)
@@ -80,6 +82,9 @@ public static class FieldAppServiceCollectionExtensions
         services.AddSingleton<PharmacyAccountCache>();
         services.AddSingleton<OrderEntryManager>();
         services.AddSingleton<OrdersStore>();
+        services.AddSingleton<CollectionEntryManager>();
+        services.AddSingleton<FinancialCustodyStore>();
+        services.AddSingleton<CustodyLedgerStore>();
 
         services.AddSingleton<SessionState>();
         services.AddSingleton<AuthService>();

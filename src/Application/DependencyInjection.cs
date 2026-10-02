@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<ILocationService, LocationService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IPharmacyService, PharmacyService>();
+        services.AddScoped<IPharmacyBalanceCalculator, PharmacyBalanceCalculator>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISalesService, SalesService>();
         services.AddScoped<IWarehouseService, WarehouseService>();

@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using PharmaERP.Application.Collections;
 using PharmaERP.Application.Custody;
 using PharmaERP.Application.Dashboard;
 using PharmaERP.Application.Doctors;
@@ -72,6 +73,21 @@ public sealed class CustodyApi(HttpClient http)
 {
     public async Task<IReadOnlyList<RepStockCustodyBalanceDto>> GetMyBalancesAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<RepStockCustodyBalanceDto>>("api/v1/Custody/mine/balances", ApiJson.Options, ct) ?? [];
+
+    public async Task<IReadOnlyList<CustodyTransactionDto>> GetMyLedgerAsync(int productId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<CustodyTransactionDto>>($"api/v1/Custody/mine/ledger?productId={productId}", ApiJson.Options, ct) ?? [];
+}
+
+public sealed class CollectionsApi(HttpClient http)
+{
+    public async Task<IReadOnlyList<CollectionDto>> GetMineAsync(int take = 30, CancellationToken ct = default) =>
+        (await http.GetFromJsonAsync<PagedResult<CollectionDto>>($"api/v1/Collections/mine?pageNumber=1&pageSize={take}", ApiJson.Options, ct))?.Items ?? [];
+
+    public Task<RepFinancialCustodyDto?> GetMyCustodyAsync(CancellationToken ct = default) =>
+        http.GetFromJsonAsync<RepFinancialCustodyDto>("api/v1/Collections/mine/custody", ApiJson.Options, ct);
+
+    public async Task<IReadOnlyList<FinancialReconciliationDto>> GetMyReconciliationsAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<FinancialReconciliationDto>>("api/v1/Collections/mine/reconciliations", ApiJson.Options, ct) ?? [];
 }
 
 internal static class Paging

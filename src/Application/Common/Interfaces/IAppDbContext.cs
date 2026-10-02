@@ -34,6 +34,7 @@ public interface IAppDbContext
     DbSet<ReturnTransaction> ReturnTransactions { get; }
     DbSet<Collection> Collections { get; }
     DbSet<CollectionAttachment> CollectionAttachments { get; }
+    DbSet<CollectionAllocation> CollectionAllocations { get; }
     DbSet<FinancialReconciliation> FinancialReconciliations { get; }
     DbSet<RemittanceTransaction> RemittanceTransactions { get; }
     DbSet<Supplier> Suppliers { get; }

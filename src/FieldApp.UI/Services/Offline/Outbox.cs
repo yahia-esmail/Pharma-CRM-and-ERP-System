@@ -33,9 +33,12 @@ public sealed class Outbox(IOutboxStore store, TimeProvider time)
             // Ticks keep order stable across app restarts; +1 keeps it strictly increasing within one tick.
             _lastSequence = Math.Max(_lastSequence + 1, now.Ticks);
 
+            var id = request.Id ?? Guid.NewGuid();
+            if (request.File is { } file) await store.SaveFileAsync(id.ToString(), file);   // bytes first, then the item
             var item = new OutboxItem
             {
-                Id = request.Id ?? Guid.NewGuid(),
+                Id = id,
+                FileKey = request.File is null ? null : id.ToString(),
                 Kind = request.Kind,
                 Title = request.Title,
                 Method = request.Method.ToUpperInvariant(),
@@ -93,8 +96,11 @@ public sealed class Outbox(IOutboxStore store, TimeProvider time)
                     grew = true;
         } while (grew);
 
-        foreach (var itemId in doomed.Where(d => items.Any(i => i.Id == d)))
-            await store.DeleteAsync(itemId);
+        foreach (var item in items.Where(i => doomed.Contains(i.Id)))
+        {
+            await store.DeleteAsync(item.Id);
+            if (item.FileKey is { } key) await store.DeleteFileAsync(key);
+        }
         Changed?.Invoke();
         return doomed.Count(d => items.Any(i => i.Id == d));
     }

@@ -33,6 +33,25 @@ public class CollectionConfiguration : IEntityTypeConfiguration<Collection>
     }
 }
 
+public class CollectionAllocationConfiguration : IEntityTypeConfiguration<CollectionAllocation>
+{
+    public void Configure(EntityTypeBuilder<CollectionAllocation> builder)
+    {
+        builder.Property(a => a.Amount).HasColumnType("decimal(18,2)");
+        builder.HasIndex(a => a.SaleId);
+
+        builder.HasOne(a => a.Collection)
+            .WithMany(c => c.Allocations)
+            .HasForeignKey(a => a.CollectionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(a => a.Sale)
+            .WithMany()
+            .HasForeignKey(a => a.SaleId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class CollectionAttachmentConfiguration : IEntityTypeConfiguration<CollectionAttachment>
 {
     public void Configure(EntityTypeBuilder<CollectionAttachment> builder)

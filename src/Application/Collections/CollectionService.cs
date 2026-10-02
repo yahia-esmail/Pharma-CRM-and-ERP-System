@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Notifications;
+using PharmaERP.Application.Pharmacies;
 using PharmaERP.Domain.Entities;
 using PharmaERP.Domain.Enums;
 using PharmaERP.Shared.Common;
@@ -10,8 +11,10 @@ using PharmaERP.Shared.Security;
 namespace PharmaERP.Application.Collections;
 
 public class CollectionService(IAppDbContext db, IFileStorageService fileStorage, INotificationService notificationService,
-    IUserDirectoryService userDirectory) : ICollectionService
+    IUserDirectoryService userDirectory, IPharmacyBalanceCalculator balances) : ICollectionService
 {
+    private const int MaxAttachmentsPerCollection = 4;
+
     public async Task<PagedResult<CollectionDto>> GetCollectionsAsync(PagedRequest request, int? representativeId,
         int? pharmacyId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken ct = default)
     {
@@ -46,17 +49,46 @@ public class CollectionService(IAppDbContext db, IFileStorageService fileStorage
 
         if (request.Amount <= 0)
             throw new ValidationFailedException("Amount must be greater than zero.");
+        if (request.CollectionDateUtc is { } when && when > DateTime.UtcNow.AddMinutes(5))
+            throw new ValidationFailedException("The collection date can't be in the future — check the phone's clock.");
+
+        // One cheque can settle several invoices (wireframe 10). Each must be this pharmacy's, still open,
+        // and the split can't exceed the amount collected; whatever isn't split goes to the oldest invoices.
+        var allocations = (request.Allocations ?? []).Where(a => a.Amount != 0).ToList();
+        // Older clients name one invoice for the whole amount: settle what's left on it, the rest goes FIFO.
+        var legacySingleInvoice = allocations.Count == 0 && request.SaleId is not null;
+        if (legacySingleInvoice)
+            allocations = [new CollectionAllocationRequest { SaleId = request.SaleId!.Value, Amount = request.Amount }];
+        if (allocations.Any(a => a.Amount < 0))
+            throw new ValidationFailedException("An invoice allocation can't be negative.");
+        if (allocations.GroupBy(a => a.SaleId).Any(g => g.Count() > 1))
+            throw new ValidationFailedException("Each invoice can appear only once in the split.");
+        if (allocations.Sum(a => a.Amount) > request.Amount)
+            throw new ValidationFailedException("The amounts split across invoices add up to more than the amount collected.");
+        if (allocations.Count > 0)
+        {
+            var balance = await balances.GetAsync(request.PharmacyId, ct);
+            foreach (var a in allocations)
+            {
+                var sale = balance.Sale(a.SaleId)
+                    ?? throw new ValidationFailedException($"Invoice #{a.SaleId} doesn't belong to this pharmacy.");
+                if (legacySingleInvoice) a.Amount = Math.Min(a.Amount, Math.Max(0, sale.Open));
+                else if (a.Amount > sale.Open)
+                    throw new ValidationFailedException($"Invoice #{a.SaleId} only has {sale.Open:N2} left to pay.");
+            }
+        }
 
         var collection = new Collection
         {
             RepresentativeId = representativeId,
             PharmacyId = request.PharmacyId,
-            SaleId = request.SaleId,
+            SaleId = allocations.Count == 1 ? allocations[0].SaleId : null,
             Amount = request.Amount,
             CollectionDateUtc = request.CollectionDateUtc ?? DateTime.UtcNow,
             PaymentMethod = request.PaymentMethod,
-            ReferenceNumber = request.ReferenceNumber,
-            Notes = request.Notes
+            ReferenceNumber = string.IsNullOrWhiteSpace(request.ReferenceNumber) ? null : request.ReferenceNumber.Trim(),
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            Allocations = allocations.Where(a => a.Amount > 0).Select(a => new CollectionAllocation { SaleId = a.SaleId, Amount = a.Amount }).ToList()
         };
         db.Collections.Add(collection);
         await db.SaveChangesAsync(ct);
@@ -279,10 +311,14 @@ public class CollectionService(IAppDbContext db, IFileStorageService fileStorage
     private const long MaxAttachmentSizeBytes = 5 * 1024 * 1024;
 
     public async Task<int> AddAttachmentAsync(int collectionId, string uploadedByUserId, string fileName,
-        string contentType, long sizeBytes, Stream content, CancellationToken ct = default)
+        string contentType, long sizeBytes, Stream content, CancellationToken ct = default, int? ownerRepresentativeId = null)
     {
-        var collectionExists = await db.Collections.AnyAsync(c => c.Id == collectionId && !c.IsDeleted, ct);
-        if (!collectionExists) throw new NotFoundException(nameof(Collection), collectionId);
+        var owner = await db.Collections.Where(c => c.Id == collectionId && !c.IsDeleted)
+            .Select(c => (int?)c.RepresentativeId).FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException(nameof(Collection), collectionId);
+        if (ownerRepresentativeId is { } rep && owner != rep) throw new ForbiddenAccessException();
+        if (await db.CollectionAttachments.CountAsync(a => a.CollectionId == collectionId, ct) >= MaxAttachmentsPerCollection)
+            throw new ValidationFailedException($"A collection can have at most {MaxAttachmentsPerCollection} photos.");
 
         if (!AllowedContentTypes.Contains(contentType))
             throw new ValidationFailedException("Only JPEG, PNG, or PDF files can be attached as proof of payment.");
