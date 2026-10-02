@@ -10,6 +10,7 @@ using PharmaERP.FieldApp.UI.Services.Offline;
 using PharmaERP.FieldApp.UI.Services.Orders;
 using PharmaERP.FieldApp.UI.Services.Collections;
 using PharmaERP.FieldApp.UI.Services.Requests;
+using PharmaERP.FieldApp.UI.Services.Notifications;
 using PharmaERP.FieldApp.UI.Services.Plan;
 using PharmaERP.FieldApp.UI.Services.Visits;
 using PharmaERP.FieldApp.UI.Services.Storage;
@@ -92,6 +93,8 @@ public static class FieldAppServiceCollectionExtensions
         services.AddSingleton<ReturnEntryManager>();
         services.AddSingleton<ExpenseEntryManager>();
         services.AddSingleton<RequestsStore>();
+        services.AddSingleton<NotificationCenter>();
+        services.AddSingleton<PushService>();
 
         services.AddSingleton<SessionState>();
         services.AddSingleton<AuthService>();

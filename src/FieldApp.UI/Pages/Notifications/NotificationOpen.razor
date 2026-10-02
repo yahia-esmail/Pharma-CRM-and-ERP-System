@@ -1,0 +1,21 @@
+@page "/notifications/open/{Id:int}"
+@inject NotificationCenter Center
+@inject NavigationManager Navigation
+
+<PageTitle>Opening… · Field CRM</PageTitle>
+
+@* Target of a tapped phone notification (push-sw.js): mark it read, then go to the record it's about. *@
+<div class="app-splash">Opening…</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "type")] public string? Type { get; set; }
+    [SupplyParameterFromQuery(Name = "entity")] public string? Entity { get; set; }
+    [SupplyParameterFromQuery(Name = "eid")] public int? EntityId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Center.MarkReadAsync(Id);
+        Navigation.NavigateTo(NotificationLinks.For(Type, string.IsNullOrEmpty(Entity) ? null : Entity, EntityId), replace: true);
+    }
+}

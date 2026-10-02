@@ -1,3 +1,5 @@
+using PharmaERP.Application.Common;
+using PharmaERP.Infrastructure.Notifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PharmaERP.Application.Common.Interfaces;
@@ -10,7 +12,8 @@ namespace PharmaERP.Web.Api.Controllers.V1;
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
-public class NotificationsController(INotificationService notificationService, ICurrentUserService currentUser) : ControllerBase
+public class NotificationsController(INotificationService notificationService, ICurrentUserService currentUser,
+    IPushSubscriptionService pushSubscriptions, VapidKeyProvider vapid) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<NotificationDto>>> GetMine(
@@ -44,6 +47,36 @@ public class NotificationsController(INotificationService notificationService, I
         if (currentUser.UserId is { } userId)
             await notificationService.MarkAllReadAsync(userId, ct);
 
+        return NoContent();
+    }
+
+    // ---- Web Push (plan 10.4) ---------------------------------------------------------------------------
+
+    /// <summary>The VAPID public key the browser needs to subscribe (it is public by design).</summary>
+    [HttpGet("push/public-key")]
+    public ActionResult<PushPublicKeyDto> GetPushPublicKey() => Ok(new PushPublicKeyDto(vapid.PublicKey));
+
+    /// <summary>Registers this browser for push. Idempotent: the same endpoint is updated, not duplicated.</summary>
+    [HttpPost("push-subscriptions")]
+    public async Task<ActionResult> Subscribe(PushSubscriptionRequest request, CancellationToken ct)
+    {
+        if (currentUser.UserId is not { } userId) return Forbid();
+        try
+        {
+            await pushSubscriptions.SubscribeAsync(userId, request, ct);
+            return NoContent();
+        }
+        catch (ValidationFailedException ex)
+        {
+            return BadRequest(new ProblemDetails { Title = ex.Message });
+        }
+    }
+
+    [HttpDelete("push-subscriptions")]
+    public async Task<ActionResult> Unsubscribe(PushUnsubscribeRequest request, CancellationToken ct)
+    {
+        if (currentUser.UserId is not { } userId) return Forbid();
+        await pushSubscriptions.UnsubscribeAsync(userId, request.Endpoint, ct);
         return NoContent();
     }
 }

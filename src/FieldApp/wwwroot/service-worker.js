@@ -3,6 +3,9 @@
 // be reflected on the first load after each change).
 self.addEventListener('fetch', () => { });
 
+// Push works in development too.
+self.importScripts('./push-sw.js');
+
 self.addEventListener('message', event => {
     if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });

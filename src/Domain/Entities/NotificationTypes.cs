@@ -13,4 +13,12 @@ public static class NotificationTypes
     public const string CustodyBalanceAging = "CustodyBalanceAging";
     public const string SupplierPaymentDue = "SupplierPaymentDue";
     public const string ExpenseAwaitingApproval = "ExpenseAwaitingApproval";
+
+    // Decisions on what a representative sent in (field app, wireframe 6) — sent to that representative.
+    public const string OrderApproved = "OrderApproved";
+    public const string OrderRejected = "OrderRejected";
+    public const string ExpenseApproved = "ExpenseApproved";
+    public const string ExpenseRejected = "ExpenseRejected";
+    public const string ReturnApproved = "ReturnApproved";
+    public const string ReturnRejected = "ReturnRejected";
 }

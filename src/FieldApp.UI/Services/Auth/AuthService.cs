@@ -25,7 +25,9 @@ public sealed class AuthService(
     OrderEntryManager orders,
     CollectionEntryManager collections,
     Requests.ReturnEntryManager returns,
-    Requests.ExpenseEntryManager expenses)
+    Requests.ExpenseEntryManager expenses,
+    Notifications.NotificationCenter notifications,
+    Notifications.PushService push)
 {
     public async Task<LoginOutcome> LoginAsync(string email, string password, CancellationToken ct = default)
     {
@@ -61,6 +63,8 @@ public sealed class AuthService(
     {
         await tracking.StopAsync();
         await syncLoop.StopAsync();
+        // Before the tokens go: this phone must stop receiving the signed-out rep's notifications.
+        await push.DisableAsync();
 
         if (tokens.Session is { } current)
             await authApi.LogoutAsync(current.RefreshToken, ct);
@@ -72,6 +76,7 @@ public sealed class AuthService(
         collections.Reset();
         returns.Reset();
         expenses.Reset();
+        notifications.Reset();
         await storage.ClearAsync();
         await tokens.ClearAsync();
         outbox.NotifyChanged();

@@ -36,6 +36,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Collection> Collections => Set<Collection>();
     public DbSet<CollectionAttachment> CollectionAttachments => Set<CollectionAttachment>();
     public DbSet<CollectionAllocation> CollectionAllocations => Set<CollectionAllocation>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<FinancialReconciliation> FinancialReconciliations => Set<FinancialReconciliation>();
     public DbSet<RemittanceTransaction> RemittanceTransactions => Set<RemittanceTransaction>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();

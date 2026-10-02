@@ -106,7 +106,7 @@ public class ExpenseCreateTests : IDisposable
         var augmentinBatch = new ProductBatch { ProductId = augmentin.Id, BatchNumber = "AUG-1", ExpiryDate = Today.AddYears(1), CreatedByUserId = "t" };
         _db.Add(augmentinBatch);
         await _db.SaveChangesAsync();
-        var returns = new ReturnService(_db, null!);
+        var returns = new ReturnService(_db, null!, null!);
 
         var ex = await Assert.ThrowsAsync<ValidationFailedException>(() => returns.RequestAsync(7, Rep, new ReturnRequestSaveRequest
         {

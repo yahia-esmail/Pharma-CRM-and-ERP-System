@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PharmaERP.Application.Common;
 using PharmaERP.Application.Common.Interfaces;
 using PharmaERP.Application.Custody;
+using PharmaERP.Application.Notifications;
 using PharmaERP.Domain.Entities;
 using PharmaERP.Domain.Enums;
 
@@ -10,7 +11,7 @@ namespace PharmaERP.Application.Returns;
 /// <summary>Formal Returns module (gap-analysis addendum 3.8) — both flows go through the same
 /// request-then-approve workflow; the actual ledger effect only happens on approval, and is delegated to
 /// ICustodyService so there's exactly one writer of CustodyTransaction/StockMovement rows in the system.</summary>
-public class ReturnService(IAppDbContext db, ICustodyService custodyService) : IReturnService
+public class ReturnService(IAppDbContext db, ICustodyService custodyService, INotificationService notificationService) : IReturnService
 {
     public async Task<IReadOnlyList<ReturnTransactionDto>> GetListAsync(int? representativeId, ReturnStatus? status,
         CancellationToken ct = default)
@@ -115,6 +116,9 @@ public class ReturnService(IAppDbContext db, ICustodyService custodyService) : I
         returnTransaction.ApprovedByUserId = approvedByUserId;
         returnTransaction.ApprovedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        await notificationService.CreateAsync(returnTransaction.RequestedByUserId, NotificationTypes.ReturnApproved,
+            $"Your return #{returnTransaction.Id} ({returnTransaction.Quantity} unit(s)) was approved.",
+            nameof(ReturnTransaction), returnTransaction.Id, ct);
     }
 
     public async Task RejectAsync(int returnId, string reason, CancellationToken ct = default)
@@ -131,5 +135,7 @@ public class ReturnService(IAppDbContext db, ICustodyService custodyService) : I
         returnTransaction.Status = ReturnStatus.Rejected;
         returnTransaction.RejectionReason = reason;
         await db.SaveChangesAsync(ct);
+        await notificationService.CreateAsync(returnTransaction.RequestedByUserId, NotificationTypes.ReturnRejected,
+            $"Your return #{returnTransaction.Id} was rejected: {reason}", nameof(ReturnTransaction), returnTransaction.Id, ct);
     }
 }

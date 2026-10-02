@@ -1,6 +1,8 @@
 @implements IDisposable
-@inject NotificationsApi NotificationsApi
+@inject NotificationCenter Notifications
+@inject PushService Push
 @inject INetworkStatus Network
+@inject NavigationManager Navigation
 
 <nav class="bottom-nav" aria-label="Main">
     <NavLink class="bottom-nav-item" href="" Match="NavLinkMatch.All">
@@ -22,43 +24,43 @@
     <NavLink class="bottom-nav-item" href="notifications">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5-6.7V3.5a2 2 0 0 0-4 0v.8A7 7 0 0 0 5 11v5l-2 2v1h18v-1z" /></svg>
         <span>Alerts</span>
-        @if (_unread > 0)
+        @if (Notifications.UnreadCount is > 0 and var unread)
         {
-            <span class="nav-badge">@(_unread > 99 ? "99+" : _unread)</span>
+            <span class="nav-badge" aria-label="@unread unread">@(unread > 99 ? "99+" : unread)</span>
         }
     </NavLink>
 </nav>
 
 @code {
-    private int _unread;
-
+    // Always on screen, so it also owns the app-wide notification plumbing: keeping the badge current, and
+    // following a tapped phone notification into the app while it's open.
     protected override async Task OnInitializedAsync()
     {
+        Notifications.Changed += OnChanged;
         Network.Changed += OnNetworkChanged;
-        await LoadUnreadAsync();
+        Push.PushReceived += OnPushReceived;
+        Push.OpenRequested += OnOpenRequested;
+        await Notifications.EnsureLoadedAsync();
+        await Push.StartListeningAsync();
+        if (Network.IsOnline) await Notifications.RefreshAsync();
     }
 
-    private async Task LoadUnreadAsync()
-    {
-        try
-        {
-            _unread = await NotificationsApi.GetUnreadCountAsync();
-        }
-        catch (HttpRequestException)
-        {
-            // Offline: keep the last known count.
-        }
-    }
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnPushReceived() => _ = InvokeAsync(() => Notifications.RefreshAsync());
+
+    private void OnOpenRequested(string path) => InvokeAsync(() => Navigation.NavigateTo(path));
 
     private void OnNetworkChanged(bool online)
     {
-        if (!online) return;
-        _ = InvokeAsync(async () =>
-        {
-            await LoadUnreadAsync();
-            StateHasChanged();
-        });
+        if (online) _ = InvokeAsync(() => Notifications.RefreshAsync());
     }
 
-    public void Dispose() => Network.Changed -= OnNetworkChanged;
+    public void Dispose()
+    {
+        Notifications.Changed -= OnChanged;
+        Network.Changed -= OnNetworkChanged;
+        Push.PushReceived -= OnPushReceived;
+        Push.OpenRequested -= OnOpenRequested;
+    }
 }

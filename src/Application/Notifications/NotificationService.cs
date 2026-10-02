@@ -5,7 +5,7 @@ using PharmaERP.Domain.Entities;
 
 namespace PharmaERP.Application.Notifications;
 
-public class NotificationService(IAppDbContext db, IBusinessCalendar calendar) : INotificationService
+public class NotificationService(IAppDbContext db, IBusinessCalendar calendar, IPushNotifier? push = null) : INotificationService
 {
     public async Task<int> CreateAsync(string recipientUserId, string type, string message, string? relatedEntityType = null,
         int? relatedEntityId = null, CancellationToken ct = default)
@@ -22,6 +22,7 @@ public class NotificationService(IAppDbContext db, IBusinessCalendar calendar) :
         };
         db.Notifications.Add(notification);
         await db.SaveChangesAsync(ct);
+        push?.Enqueue(new PushMessage(recipientUserId, notification.Id, type, message, relatedEntityType, relatedEntityId));
         return notification.Id;
     }
 

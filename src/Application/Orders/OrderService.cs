@@ -290,6 +290,7 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
         order.Status = OrderStatus.Approved;
         order.RejectionReason = null;
         await db.SaveChangesAsync(ct);
+        await NotifyRepresentativeAsync(order, NotificationTypes.OrderApproved, $"Order #{order.Id} was approved.", ct);
     }
 
     public async Task RejectAsync(int orderId, string reason, CancellationToken ct = default)
@@ -306,6 +307,15 @@ public class OrderService(IAppDbContext db, ICustodyService custodyService, INot
         order.Status = OrderStatus.Rejected;
         order.RejectionReason = reason;
         await db.SaveChangesAsync(ct);
+        await NotifyRepresentativeAsync(order, NotificationTypes.OrderRejected, $"Order #{order.Id} was rejected: {reason}", ct);
+    }
+
+    private async Task NotifyRepresentativeAsync(Order order, string type, string message, CancellationToken ct)
+    {
+        var userId = await db.Representatives.AsNoTracking().Where(r => r.Id == order.RepresentativeId)
+            .Select(r => r.ApplicationUserId).FirstOrDefaultAsync(ct);
+        if (!string.IsNullOrEmpty(userId))
+            await notificationService.CreateAsync(userId, type, message, nameof(Order), order.Id, ct);
     }
 
     public async Task<int> DeliverAsync(int orderId, CancellationToken ct = default)

@@ -565,3 +565,15 @@ html, body {
 .expense-types { flex-wrap: wrap; overflow: visible; }
 .expense-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .expense-grid label { display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- Notifications --------------------------------------------------------------------------- */
+.notification-row { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 8px; text-align: left; background: var(--fa-surface); color: var(--fa-text); }
+.notification-row.unread { border-color: #b9cde3; background: #f3f8fd; }
+.notification-row.unread .notification-message { font-weight: 600; }
+.notification-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.notification-icon { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--fa-muted); }
+.notification-icon.ok { background: var(--fa-success); }
+.notification-icon.bad { background: var(--fa-danger); }
+.notification-icon.warn { background: var(--fa-warning); }
+.notification-icon.info { background: var(--fa-primary); }
+.unread-dot { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--fa-primary); }

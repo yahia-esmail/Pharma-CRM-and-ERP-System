@@ -99,4 +99,6 @@ public static class StorageKeys
     public const string Warehouses = "cache:warehouses";
     public const string PendingReturns = "returns:pending";
     public const string PendingExpenses = "expenses:pending";
+
+    public const string Notifications = "cache:notifications";
 }

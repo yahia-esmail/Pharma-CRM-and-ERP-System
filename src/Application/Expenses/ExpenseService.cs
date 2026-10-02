@@ -117,6 +117,8 @@ public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachm
         expense.ApprovedByUserId = approverUserId;
         expense.ApprovedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        await notificationService.CreateAsync(expense.CreatedByUserId, NotificationTypes.ExpenseApproved,
+            $"Your expense #{expense.Id} ({expense.Amount:N0} EGP) was approved.", nameof(Expense), expense.Id, ct);
     }
 
     public async Task RejectAsync(int expenseId, string approverUserId, string reason, CancellationToken ct = default)
@@ -135,6 +137,8 @@ public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachm
         expense.ApprovedAtUtc = DateTime.UtcNow;
         expense.RejectionReason = reason;
         await db.SaveChangesAsync(ct);
+        await notificationService.CreateAsync(expense.CreatedByUserId, NotificationTypes.ExpenseRejected,
+            $"Your expense #{expense.Id} was rejected: {reason}", nameof(Expense), expense.Id, ct);
     }
 
     public async Task ReimburseAsync(int expenseId, string financeUserId, CancellationToken ct = default)

@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<IReturnService, ReturnService>();
         services.AddScoped<IDistrictDashboardService, DistrictDashboardService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
         services.AddScoped<IFileAttachmentService, FileAttachmentService>();
         services.AddScoped<IExpenseService, ExpenseService>();
         return services;

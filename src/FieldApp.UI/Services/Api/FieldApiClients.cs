@@ -4,6 +4,7 @@ using PharmaERP.Application.Custody;
 using PharmaERP.Application.Dashboard;
 using PharmaERP.Application.Doctors;
 using PharmaERP.Application.Expenses;
+using PharmaERP.Application.Notifications;
 using PharmaERP.Application.Returns;
 using PharmaERP.Application.Warehouses;
 using PharmaERP.Application.Orders;
@@ -141,5 +142,30 @@ public sealed class NotificationsApi(HttpClient http)
         using var response = await http.GetAsync("api/v1/Notifications/unread-count", ct);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<int>(ApiJson.Options, ct);
+    }
+
+    public async Task<IReadOnlyList<NotificationDto>> GetMineAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<NotificationDto>>("api/v1/Notifications?take=100", ApiJson.Options, ct) ?? [];
+
+    public async Task<string> GetPushPublicKeyAsync(CancellationToken ct = default) =>
+        (await http.GetFromJsonAsync<PushPublicKeyDto>("api/v1/Notifications/push/public-key", ApiJson.Options, ct))!.PublicKey;
+
+    /// <summary>Registers the browser subscription (the JSON the browser produced) — online only: subscribing
+    /// needs the push service anyway.</summary>
+    public async Task SubscribePushAsync(string subscriptionJson, CancellationToken ct = default)
+    {
+        using var content = new StringContent(subscriptionJson, System.Text.Encoding.UTF8, "application/json");
+        using var response = await http.PostAsync("api/v1/Notifications/push-subscriptions", content, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UnsubscribePushAsync(string endpoint, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "api/v1/Notifications/push-subscriptions")
+        {
+            Content = JsonContent.Create(new PushUnsubscribeRequest { Endpoint = endpoint }, options: ApiJson.Options)
+        };
+        using var response = await http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
     }
 }

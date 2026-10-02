@@ -1,5 +1,133 @@
 @page "/notifications"
+@using PharmaERP.Application.Notifications
+@implements IDisposable
+@inject NotificationCenter Center
+@inject PushService Push
+@inject INetworkStatus Network
+@inject TimeProvider Time
+@inject NavigationManager Navigation
 
 <PageTitle>Notifications · Field CRM</PageTitle>
 
-<PlaceholderScreen Title="Notifications" Phase="10" />
+@*
+  Notifications (wireframe 6): approvals and rejections of what the rep sent in, reminders and alerts. Tapping
+  one opens the record it's about. Phone notifications (Web Push) can be turned on from here.
+*@
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title mb-0">Notifications</h1>
+        @if (Center.SavedAtUtc is { } saved)
+        {
+            <div class="small text-secondary">as of @saved.ToLocalTime().ToString("HH:mm")</div>
+        }
+    </div>
+    @if (Center.UnreadCount > 0)
+    {
+        <button class="btn btn-sm btn-outline-secondary" @onclick="Center.MarkAllReadAsync">Mark all read</button>
+    }
+</div>
+
+@if (_push is { Supported: true, Subscribed: false } p)
+{
+    <section class="app-card gps-card">
+        <h2 class="card-heading mb-1">Get notified on this phone</h2>
+        @if (p.NeedsInstallFirst)
+        {
+            <p class="small mb-0">On iPhone, add the app to your Home Screen first (Share → Add to Home Screen), then open it from there to turn on notifications.</p>
+        }
+        else if (p.Permission == "denied")
+        {
+            <p class="small mb-0">Notifications are blocked for this app. Allow them in the browser's site settings, then come back here.</p>
+        }
+        else
+        {
+            <p class="small">Hear about order approvals, rejected expenses and reminders even when the app is closed.</p>
+            <button class="btn btn-primary w-100" @onclick="EnablePushAsync" disabled="@_enabling">@(_enabling ? "Turning on…" : "Turn on notifications")</button>
+        }
+        @if (_pushError is not null)
+        {
+            <div class="small text-danger mt-2">@_pushError</div>
+        }
+    </section>
+}
+
+@if (!Center.Items.Any())
+{
+    <EmptyState Title="@(Center.SavedAtUtc is null ? "Notifications not downloaded yet" : "No notifications")"
+                Message="@(Center.SavedAtUtc is null ? "Connect to the internet to load your notifications." : "Approvals, rejections and reminders will appear here.")" />
+}
+else
+{
+    @foreach (var group in Center.Items.GroupBy(n => DayLabel(n.CreatedAtUtc)))
+    {
+        <h2 class="section-label">@group.Key</h2>
+        @foreach (var n in group)
+        {
+            <button type="button" class="app-card notification-row @(n.IsRead ? "" : "unread")" @onclick="() => OpenAsync(n)">
+                <span class="notification-icon @NotificationLinks.Icon(n.Type)" aria-hidden="true"></span>
+                <span class="notification-text">
+                    <span class="notification-message">@n.Message</span>
+                    <span class="order-meta">@n.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                </span>
+                @if (!n.IsRead)
+                {
+                    <span class="unread-dot" aria-label="Unread"></span>
+                }
+            </button>
+        }
+    }
+}
+
+@if (_push is { Subscribed: true })
+{
+    <div class="text-center mb-3">
+        <button class="btn btn-link btn-sm text-secondary" @onclick="DisablePushAsync">Turn off notifications on this phone</button>
+    </div>
+}
+
+@code {
+    private PushStatus? _push;
+    private bool _enabling;
+    private string? _pushError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Center.Changed += OnChanged;
+        await Center.EnsureLoadedAsync();
+        _push = await Push.GetStatusAsync();
+        StateHasChanged();
+        if (Network.IsOnline) await Center.RefreshAsync();
+    }
+
+    private async Task OpenAsync(NotificationDto n)
+    {
+        await Center.MarkReadAsync(n.Id);
+        var target = NotificationLinks.For(n.Type, n.RelatedEntityType, n.RelatedEntityId);
+        if (target != "notifications") Navigation.NavigateTo(target);
+    }
+
+    private async Task EnablePushAsync()
+    {
+        _enabling = true;
+        _pushError = await Push.EnableAsync();
+        _push = await Push.GetStatusAsync();
+        _enabling = false;
+    }
+
+    private async Task DisablePushAsync()
+    {
+        await Push.DisableAsync();
+        _push = await Push.GetStatusAsync();
+    }
+
+    private string DayLabel(DateTime utc)
+    {
+        var day = DateOnly.FromDateTime(utc.ToLocalTime());
+        var today = DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+        return day == today ? "Today" : day == today.AddDays(-1) ? "Yesterday" : day.ToString("dd MMM yyyy");
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Center.Changed -= OnChanged;
+}
