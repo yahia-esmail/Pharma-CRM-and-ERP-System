@@ -2,7 +2,8 @@
 <span class="money @Class">@Format(Value)</span>
 
 @code {
-    private static readonly System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+    // Invariant: the app runs with InvariantGlobalization (no ICU data), and its UI is English throughout.
+    private static readonly System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.InvariantCulture;
 
     [Parameter] public decimal? Value { get; set; }
     [Parameter] public bool Compact { get; set; }

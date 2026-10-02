@@ -11,6 +11,8 @@ using PharmaERP.FieldApp.UI.Services.Orders;
 using PharmaERP.FieldApp.UI.Services.Collections;
 using PharmaERP.FieldApp.UI.Services.Requests;
 using PharmaERP.FieldApp.UI.Services.Notifications;
+using PharmaERP.FieldApp.UI.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 using PharmaERP.FieldApp.UI.Services.Plan;
 using PharmaERP.FieldApp.UI.Services.Visits;
 using PharmaERP.FieldApp.UI.Services.Storage;
@@ -65,6 +67,8 @@ public static class FieldAppServiceCollectionExtensions
         AddApi<ReturnsApi>();
         AddApi<ExpensesApi>();
         AddApi<WarehousesApi>();
+        AddApi<ClientErrorsApi>();
+        AddApi<PasskeysApi>();
 
         // Offline-first (plan 8): every write is queued in the outbox and delivered by the sync loop.
         services.AddHttpClient(OutboxProcessor.HttpClientName, c => c.BaseAddress = apiBaseUri)
@@ -95,6 +99,11 @@ public static class FieldAppServiceCollectionExtensions
         services.AddSingleton<RequestsStore>();
         services.AddSingleton<NotificationCenter>();
         services.AddSingleton<PushService>();
+
+        // Errors on the phone reach the server log (plan phase 11), scrubbed of tokens and personal data.
+        services.AddSingleton<ILoggerProvider, ClientErrorSink>();
+        services.AddSingleton<ClientErrorReporter>();
+        services.AddSingleton<PasskeyService>();
 
         services.AddSingleton<SessionState>();
         services.AddSingleton<AuthService>();

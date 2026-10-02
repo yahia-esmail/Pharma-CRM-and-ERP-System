@@ -6,7 +6,7 @@
     --fa-bg: #f4f6f8;
     --fa-surface: #ffffff;
     --fa-text: #1d2329;
-    --fa-muted: #6b7682;
+    --fa-muted: #56616c; /* 5.9:1 on white, 5.3:1 on --fa-bg — WCAG AA for small text outdoors */
     --fa-border: #dde2e7;
     --fa-success: #1e8e3e;
     --fa-danger: #c62828;
@@ -92,7 +92,7 @@ html, body {
 .gps-badge.good svg { fill: #6fdc8c; }
 .gps-badge.fair svg { fill: #ffd54f; }
 .gps-badge.bad { background: var(--fa-danger); }
-.gps-badge.idle { opacity: .75; }
+.gps-badge.idle { background: rgba(255, 255, 255, .12); } /* was opacity .75, which pushed the text under 4.5:1 */
 
 .net-dot { width: 10px; height: 10px; border-radius: 50%; }
 .net-dot.online { background: #6fdc8c; }
@@ -498,7 +498,7 @@ html, body {
 .order-line:first-of-type { margin-top: 12px; }
 .order-line-inputs { display: grid; grid-template-columns: auto 1fr 1fr; gap: 10px; align-items: end; margin-top: 8px; }
 .order-line-inputs label { display: flex; flex-direction: column; min-width: 0; }
-.order-line-inputs .form-control { min-height: 40px; }
+.order-line-inputs .form-control { min-height: var(--fa-touch); }
 .qty-stepper input { width: 46px; height: 40px; border: 0; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .qty-stepper input::-webkit-outer-spin-button, .qty-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .order-line-total { text-align: right; font-weight: 600; margin-top: 6px; }
@@ -577,3 +577,26 @@ html, body {
 .notification-icon.warn { background: var(--fa-warning); }
 .notification-icon.info { background: var(--fa-primary); }
 .unread-dot { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--fa-primary); }
+
+
+/* ---- Accessibility (plan phase 11) ----------------------------------------------------------
+   Reps tap with a thumb, often standing in the street: every control is at least 44 × 44 px (--fa-touch), and
+   secondary text keeps WCAG AA contrast. Kept last so it wins over the component rules above. */
+.text-secondary { color: var(--fa-muted) !important; }
+.btn-outline-secondary { --bs-btn-color: var(--fa-muted); --bs-btn-border-color: #8a949e; }
+.btn, .btn-sm, .chip, .form-control, .form-select, .segmented button, .gps-badge { min-height: var(--fa-touch); }
+.btn-sm { display: inline-flex; align-items: center; justify-content: center; }
+.form-control-lg { min-height: 52px; }
+textarea.form-control { min-height: 88px; }
+.qty-stepper button, .qty-stepper input { height: var(--fa-touch); }
+.qty-stepper button { min-width: var(--fa-touch); }
+.back-link { display: inline-flex; align-items: center; min-height: var(--fa-touch); padding-right: 12px; }
+.chip-remove { min-width: var(--fa-touch); min-height: var(--fa-touch); }
+.btn-link.btn-sm, .btn-link { min-height: var(--fa-touch); }
+a, .btn-link { color: var(--fa-primary); }                    /* Bootstrap's #0d6efd is 4.15:1 on the app background */
+.text-danger, .btn-link.text-danger { color: var(--fa-danger) !important; }   /* #dc3545 → #c62828 (5.6:1) */
+
+/* ---- Sign-in & security --------------------------------------------------------------------- */
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: var(--fa-muted); font-size: .85rem; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--fa-border); }
+.passkey-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fa-border); }

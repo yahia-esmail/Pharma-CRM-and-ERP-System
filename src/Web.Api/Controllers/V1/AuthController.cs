@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PharmaERP.Infrastructure.Identity;
 using PharmaERP.Infrastructure.Security;
 using PharmaERP.Web.Api.Contracts;
+using PharmaERP.Web.Api.Security;
 
 namespace PharmaERP.Web.Api.Controllers.V1;
 
@@ -11,10 +13,11 @@ namespace PharmaERP.Web.Api.Controllers.V1;
 [Route("api/v1/[controller]")]
 [AllowAnonymous]
 public class AuthController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager,
-    ITokenService tokenService) : ControllerBase
+    ITokenService tokenService, IPasskeyHandler<ApplicationUser> passkeys, PasskeyFlows flows) : ControllerBase
 {
     /// <summary>Issues a JWT access token for the mobile app (spec 5.1) — used by field representatives.</summary>
     [HttpPost("login")]
+    [EnableRateLimiting(RateLimits.SignIn)]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
@@ -29,6 +32,42 @@ public class AuthController(SignInManager<ApplicationUser> signInManager, UserMa
         var refreshToken = await tokenService.CreateRefreshTokenAsync(user.Id, ct);
         var roles = await userManager.GetRolesAsync(user);
 
+        return Ok(new LoginResponse(accessToken.Token, accessToken.ExpiresAtUtc, refreshToken, user.FullName, roles.ToList()));
+    }
+
+    /// <summary>Starts a passkey sign-in (fingerprint / face unlock). No user name: the phone offers the passkeys it
+    /// holds for this app.</summary>
+    [HttpPost("passkey/options")]
+    [EnableRateLimiting(RateLimits.SignIn)]
+    public async Task<ActionResult<PasskeyOptionsResponse>> PasskeyOptions()
+    {
+        var options = await passkeys.MakeRequestOptionsAsync(null, HttpContext);
+        return Ok(new PasskeyOptionsResponse(flows.Start(PasskeyFlows.Kind.SignIn, null, options.AssertionState), options.RequestOptionsJson));
+    }
+
+    /// <summary>Completes a passkey sign-in and issues the same tokens as a password sign-in.</summary>
+    [HttpPost("passkey")]
+    [EnableRateLimiting(RateLimits.SignIn)]
+    public async Task<ActionResult<LoginResponse>> PasskeySignIn(PasskeyCompleteRequest request, CancellationToken ct)
+    {
+        if (flows.Take(request.FlowId, PasskeyFlows.Kind.SignIn, null) is not { } state)
+            return Unauthorized(new ProblemDetails { Title = "This sign-in expired — try again." });
+
+        var result = await passkeys.PerformAssertionAsync(new PasskeyAssertionContext
+        {
+            CredentialJson = request.CredentialJson,
+            AssertionState = state,
+            HttpContext = HttpContext
+        });
+        if (!result.Succeeded || result.User is not { IsActive: true } user)
+            return Unauthorized(new ProblemDetails { Title = "Fingerprint sign-in failed." });
+        if (await userManager.IsLockedOutAsync(user))
+            return Unauthorized(new ProblemDetails { Title = "This account is locked." });
+
+        await userManager.AddOrUpdatePasskeyAsync(user, result.Passkey);   // new signature counter (clone detection)
+        var accessToken = await tokenService.CreateAccessTokenAsync(user);
+        var refreshToken = await tokenService.CreateRefreshTokenAsync(user.Id, ct);
+        var roles = await userManager.GetRolesAsync(user);
         return Ok(new LoginResponse(accessToken.Token, accessToken.ExpiresAtUtc, refreshToken, user.FullName, roles.ToList()));
     }
 

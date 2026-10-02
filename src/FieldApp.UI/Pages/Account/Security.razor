@@ -1,0 +1,98 @@
+@page "/account/security"
+@using PharmaERP.Web.Api.Contracts
+@inject PasskeyService Passkeys
+@inject INetworkStatus Network
+
+<PageTitle>Sign-in &amp; security · Field CRM</PageTitle>
+
+@* Fingerprint / face sign-in (plan 9.3): set it up on this phone, see which devices have it, remove one. *@
+<a class="back-link" href="">‹ Home</a>
+<h1 class="page-title mt-2">Sign-in &amp; security</h1>
+
+<section class="app-card">
+    <h2 class="card-heading">Fingerprint sign-in</h2>
+    @if (!_available)
+    {
+        <p class="small mb-0">This phone has no fingerprint or face unlock the browser can use — keep signing in with your password.</p>
+    }
+    else
+    {
+        <p class="small text-secondary">Sign in with your fingerprint or face instead of typing your password. Your fingerprint never leaves the phone.</p>
+        <button class="btn btn-primary w-100" @onclick="EnrollAsync" disabled="@(_busy || !Network.IsOnline)">
+            @(_busy ? "Waiting for your fingerprint…" : "Set up on this phone")
+        </button>
+        @if (!Network.IsOnline)
+        {
+            <div class="small text-secondary mt-2">Needs internet to set up.</div>
+        }
+    }
+    @if (_message is not null)
+    {
+        <div class="alert @(_ok ? "alert-success" : "alert-danger") py-2 small mt-2 mb-0" role="status">@_message</div>
+    }
+</section>
+
+@if (_passkeys is { Count: > 0 })
+{
+    <section class="app-card">
+        <h2 class="card-heading mb-1">Devices that can sign in</h2>
+        @foreach (var p in _passkeys)
+        {
+            <div class="passkey-row">
+                <div>
+                    <strong>@(p.Name ?? "Passkey")</strong>
+                    <div class="order-meta">Added @p.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</div>
+                </div>
+                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveAsync(p)">Remove</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private bool _available;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+    private IReadOnlyList<PasskeyDto>? _passkeys;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _available = await Passkeys.IsAvailableAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try { _passkeys = await Passkeys.GetMineAsync(); }
+        catch (HttpRequestException) { _passkeys = null; }
+    }
+
+    private async Task EnrollAsync()
+    {
+        _busy = true;
+        _message = null;
+        var error = await Passkeys.EnrollAsync(DeviceName());
+        _ok = error is null;
+        _message = error ?? "Done — next time, tap \"Sign in with fingerprint\".";
+        _busy = false;
+        await LoadAsync();
+    }
+
+    private async Task RemoveAsync(PasskeyDto passkey)
+    {
+        try
+        {
+            // We can't tell which device a passkey lives on; if this phone still has one, setting up again says so.
+            await Passkeys.RemoveAsync(passkey.Id, isThisDevice: true);
+            await LoadAsync();
+        }
+        catch (HttpRequestException)
+        {
+            _ok = false;
+            _message = "Couldn't remove it — check the connection.";
+        }
+    }
+
+    private static string DeviceName() => "Phone added " + DateTime.Now.ToString("dd MMM yyyy");
+}

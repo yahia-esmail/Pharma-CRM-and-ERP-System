@@ -3,6 +3,7 @@
 @inject PushService Push
 @inject INetworkStatus Network
 @inject NavigationManager Navigation
+@inject PharmaERP.FieldApp.UI.Services.Diagnostics.ClientErrorReporter ErrorReporter
 
 <nav class="bottom-nav" aria-label="Main">
     <NavLink class="bottom-nav-item" href="" Match="NavLinkMatch.All">
@@ -40,12 +41,19 @@
         Network.Changed += OnNetworkChanged;
         Push.PushReceived += OnPushReceived;
         Push.OpenRequested += OnOpenRequested;
+        Navigation.LocationChanged += OnLocationChanged;
+        TrackPath(Navigation.Uri);
+        ErrorReporter.Start();
         await Notifications.EnsureLoadedAsync();
         await Push.StartListeningAsync();
         if (Network.IsOnline) await Notifications.RefreshAsync();
     }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    // Error reports say which screen they came from (path only — no query string).
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => TrackPath(e.Location);
+    private static void TrackPath(string uri) => PharmaERP.FieldApp.UI.Services.Diagnostics.ClientErrorSink.CurrentPath = new Uri(uri).AbsolutePath;
 
     private void OnPushReceived() => _ = InvokeAsync(() => Notifications.RefreshAsync());
 
@@ -62,5 +70,6 @@
         Network.Changed -= OnNetworkChanged;
         Push.PushReceived -= OnPushReceived;
         Push.OpenRequested -= OnOpenRequested;
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

@@ -58,6 +58,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        // Identity schema Version3 (for passkeys) also shrinks these key columns to 128 / 256 characters. Existing
+        // databases keep their sizes: SQL Server can't alter primary-key columns in place, and passkeys don't need it.
+        builder.Entity<IdentityUserToken<string>>(b =>
+        {
+            b.Property(t => t.LoginProvider).HasMaxLength(450);
+            b.Property(t => t.Name).HasMaxLength(450);
+        });
+        builder.Entity<IdentityUserLogin<string>>(b =>
+        {
+            b.Property(l => l.LoginProvider).HasMaxLength(450);
+            b.Property(l => l.ProviderKey).HasMaxLength(450);
+        });
+        builder.Entity<ApplicationUser>().Property(u => u.PhoneNumber).Metadata.SetMaxLength(null);
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // Global soft-delete filter (spec 5.3 — transactional/master data is never physically deleted).

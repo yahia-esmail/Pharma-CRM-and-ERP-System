@@ -7,6 +7,7 @@
 @inject AuthService Auth
 @inject NavigationManager Navigation
 @inject TodayPlanState Plan
+@inject PasskeyService Passkeys
 @implements IDisposable
 
 <PageTitle>Home · Field CRM</PageTitle>
@@ -22,8 +23,23 @@
             }
         </p>
     </div>
-    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SignOutAsync(force: false)">Sign out</button>
+    <div class="d-flex flex-column align-items-end gap-1">
+        <button class="btn btn-sm btn-outline-secondary" @onclick="() => SignOutAsync(force: false)">Sign out</button>
+        <a class="small" href="account/security">Security</a>
+    </div>
 </section>
+
+@if (_offerPasskey)
+{
+    <section class="app-card gps-card">
+        <h2 class="card-heading mb-1">Sign in with your fingerprint</h2>
+        <p class="small">Skip typing your password next time — use this phone's fingerprint or face unlock.</p>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary flex-fill" href="account/security">Set up</a>
+            <button class="btn btn-link" @onclick="DismissPasskeyAsync">Not now</button>
+        </div>
+    </section>
+}
 
 @if (_unsyncedOnSignOut > 0)
 {
@@ -61,7 +77,7 @@ else
             <h2 class="card-heading">Today's Plan</h2>
             <span class="fw-semibold">@done of @planned</span>
         </div>
-        <div class="progress" role="progressbar" aria-valuenow="@Percent(done, planned)" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress" role="progressbar" aria-label="Visits done today" aria-valuenow="@Percent(done, planned)" aria-valuemin="0" aria-valuemax="100">
             <div class="progress-bar" style="width:@Percent(done, planned)%"></div>
         </div>
         @if (Plan.NextStop is { } next)
@@ -164,8 +180,17 @@ else
     private static int Percent(int done, int planned) =>
         planned == 0 ? 0 : (int)Math.Round(100.0 * done / planned);
 
+    private bool _offerPasskey;
+
+    private async Task DismissPasskeyAsync()
+    {
+        _offerPasskey = false;
+        await Passkeys.DismissOfferAsync();
+    }
+
     protected override async Task OnInitializedAsync()
     {
+        _offerPasskey = await Passkeys.ShouldOfferAsync();
         Plan.Changed += OnPlanChanged;
         await Plan.EnsureLoadedAsync();
 

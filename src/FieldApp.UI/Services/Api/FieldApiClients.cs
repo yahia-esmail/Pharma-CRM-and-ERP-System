@@ -100,6 +100,15 @@ public sealed class WarehousesApi(HttpClient http)
         await http.GetFromJsonAsync<List<WarehouseListItemDto>>("api/v1/Warehouses", ApiJson.Options, ct) ?? [];
 }
 
+public sealed class ClientErrorsApi(HttpClient http)
+{
+    public async Task ReportAsync(PharmaERP.Application.Diagnostics.ClientErrorReport report, CancellationToken ct = default)
+    {
+        using var response = await http.PostAsJsonAsync("api/v1/ClientErrors", report, ApiJson.Options, ct);
+        response.EnsureSuccessStatusCode();
+    }
+}
+
 public sealed class CollectionsApi(HttpClient http)
 {
     public async Task<IReadOnlyList<CollectionDto>> GetMineAsync(int take = 30, CancellationToken ct = default) =>

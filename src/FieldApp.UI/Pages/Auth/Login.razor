@@ -4,6 +4,7 @@
 @inject AuthService Auth
 @inject TokenStore Tokens
 @inject NavigationManager Navigation
+@inject PasskeyService Passkeys
 
 <PageTitle>Sign in · Field CRM</PageTitle>
 
@@ -46,7 +47,16 @@
         </button>
     </EditForm>
 
-    @* Biometric sign-in (Passkeys/WebAuthn) and "Forgot password" need API support first — plan phase 11. *@
+    @if (_passkeyAvailable)
+    {
+        <div class="auth-divider"><span>or</span></div>
+        <button type="button" class="btn btn-outline-primary btn-lg w-100" @onclick="PasskeySignInAsync" disabled="@_busy">
+            <svg class="me-2" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a9 9 0 0 0-9 9v1h2v-1a7 7 0 0 1 14 0v4a5 5 0 0 1-1 3l1.6 1.2A7 7 0 0 0 21 15v-4a9 9 0 0 0-9-9zm0 4a5 5 0 0 0-5 5v3a9 9 0 0 1-1.6 5.2L7 20.4A11 11 0 0 0 9 14v-3a3 3 0 0 1 6 0v3a15 15 0 0 1-1.4 6.4l1.8.9A17 17 0 0 0 17 14v-3a5 5 0 0 0-5-5zm-1 5v3a13 13 0 0 1-2.6 7.8l1.6 1.2A15 15 0 0 0 13 14v-3z"/></svg>
+            Sign in with fingerprint
+        </button>
+        <p class="small text-secondary text-center mt-2 mb-0">Set it up once from the home screen after signing in with your password.</p>
+    }
+    @* "Forgot password" needs a reset flow in the API first. *@
 </div>
 
 @code {
@@ -54,13 +64,38 @@
     private bool _busy;
     private bool _showPassword;
     private string? _error;
+    private bool _passkeyAvailable;
 
     [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await Tokens.InitializeAsync();
-        if (Tokens.Session is not null) GoBack();
+        if (Tokens.Session is not null) { GoBack(); return; }
+        _passkeyAvailable = await Passkeys.IsAvailableAsync();
+    }
+
+    private async Task PasskeySignInAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var outcome = await Auth.LoginWithPasskeyAsync();
+            _error = outcome switch
+            {
+                PasskeyOutcome.Succeeded or PasskeyOutcome.Cancelled => null,
+                PasskeyOutcome.NotARepresentative => "This app is for field representatives. Please use the web portal.",
+                PasskeyOutcome.Rejected => "Fingerprint sign-in didn't work — sign in with your password (and set it up again from the home screen).",
+                PasskeyOutcome.Unsupported => "This phone can't sign in with a fingerprint.",
+                _ => "Can't reach the server. Check your connection and try again."
+            };
+            if (outcome == PasskeyOutcome.Succeeded) GoBack();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task SignInAsync()

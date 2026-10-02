@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -12,7 +14,10 @@ using PharmaERP.Infrastructure.BackgroundServices;
 using PharmaERP.Infrastructure.Persistence;
 using PharmaERP.Infrastructure.Security;
 using PharmaERP.Infrastructure.Services;
+using PharmaERP.Web.Api;
 using PharmaERP.Web.Api.Middleware;
+using PharmaERP.Web.Api.Security;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +40,9 @@ builder.Services.AddSingleton<IFileStorageService>(new LocalFileStorageService(
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt configuration section is missing.");
+// Never from appsettings.json: a secret store, or a key generated into .keys/ in development (see JwtSigningKey).
+var signingKey = JwtSigningKey.Resolve(builder.Configuration, builder.Environment);
+builder.Services.PostConfigure<JwtSettings>(settings => settings.Key = signingKey);   // TokenService signs with the same key
 
 builder.Services.AddAuthentication(options =>
 {
@@ -51,7 +59,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings.Issuer,
         ValidAudience = jwtSettings.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Convert.FromBase64String(jwtSettings.Key)),
+        IssuerSigningKey = new SymmetricSecurityKey(Convert.FromBase64String(signingKey)),
         ClockSkew = TimeSpan.FromMinutes(1)
     };
 });
@@ -92,6 +100,39 @@ builder.Services.AddCors(options => options.AddPolicy(FieldAppCorsPolicy, policy
 // Purges stored responses for Idempotency-Key replays (see IdempotencyMiddleware).
 builder.Services.AddHostedService<IdempotencyCleanupService>();
 
+// Rate limits (plan 9.4): password guessing on sign-in (per client IP — generous enough for a whole office
+// signing in at 8:00 behind one NAT), and runaway location uploads (per user). 429 carries Retry-After; the
+// field app's outbox treats it as "try again later".
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        return ValueTask.CompletedTask;
+    };
+    options.AddPolicy(RateLimits.SignIn, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+    options.AddPolicy(RateLimits.PerUser, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1) }));
+});
+
+// Passkeys (plan 9.3). The ceremony runs in the field app's page, on its own origin — so the relying party is the
+// app's domain, and the origins accepted are the field app's (Cors:FieldAppOrigins), not this API's.
+var fieldAppOrigins = builder.Configuration.GetSection("Cors:FieldAppOrigins").Get<string[]>() ?? [];
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<PasskeyFlows>();
+builder.Services.Configure<IdentityPasskeyOptions>(options =>
+{
+    options.ServerDomain = builder.Configuration["Passkeys:ServerDomain"]
+        ?? (fieldAppOrigins.Length > 0 ? new Uri(fieldAppOrigins[0]).Host : null);
+    options.ValidateOrigin = context => ValueTask.FromResult(!context.CrossOrigin
+        && fieldAppOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase));
+});
+
 builder.Services.AddResponseCompression();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>();
@@ -116,6 +157,7 @@ app.UseHttpsRedirection();
 
 app.UseCors(FieldAppCorsPolicy);
 app.UseAuthentication();
+app.UseRateLimiter();   // after authentication, so per-user limits know the user
 app.UseAuthorization();
 // After authorization: only requests that will actually reach an endpoint are recorded.
 app.UseMiddleware<IdempotencyMiddleware>();

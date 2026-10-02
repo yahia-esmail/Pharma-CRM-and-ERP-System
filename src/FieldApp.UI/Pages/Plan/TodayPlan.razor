@@ -43,7 +43,7 @@ else
                 <span class="small text-secondary">as of @saved.ToLocalTime().ToString("HH:mm")</span>
             }
         </div>
-        <div class="progress mt-2" role="progressbar" aria-valuenow="@Percent" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress mt-2" role="progressbar" aria-label="Visits done today" aria-valuenow="@Percent" aria-valuemin="0" aria-valuemax="100">
             <div class="progress-bar" style="width:@Percent%"></div>
         </div>
         @if (Plan.Route.RemainingStops > 0)

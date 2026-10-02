@@ -37,6 +37,11 @@ export async function create(element, options) {
   return id;
 }
 
+// Customer names come from the server and are shown as text, never as HTML: Leaflet's popup and divIcon take
+// HTML strings, so anything interpolated into them is escaped (a name like "<img onerror=…>" must not run).
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const safeColor = c => /^#[0-9a-fA-F]{3,8}$/.test(c ?? '') ? c : '#1f4e79';
+
 export function setMarkers(id, markers, fit) {
   const m = maps.get(id);
   if (!m) return;
@@ -46,12 +51,16 @@ export function setMarkers(id, markers, fit) {
   for (const mk of markers) {
     const icon = L.divIcon({
       className: 'map-pin',
-      html: `<span class="map-pin-dot" style="background:${mk.color}">${mk.label ?? ''}</span>`,
+      html: `<span class="map-pin-dot" style="background:${safeColor(mk.color)}">${escapeHtml(mk.label)}</span>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
     const marker = L.marker([mk.latitude, mk.longitude], { icon, title: mk.title ?? '' });
-    if (mk.title) marker.bindPopup(mk.title);
+    if (mk.title) {
+      const popup = document.createElement('span');
+      popup.textContent = mk.title;
+      marker.bindPopup(popup);
+    }
     m.markers.addLayer(marker);
     points.push([mk.latitude, mk.longitude]);
   }

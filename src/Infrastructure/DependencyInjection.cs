@@ -33,6 +33,8 @@ public static class DependencyInjection
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.User.RequireUniqueEmail = true;
+                // Version3 adds AspNetUserPasskeys: fingerprint / face sign-in on the field app (WebAuthn passkeys).
+                options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders()

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PharmaERP.Application.Common;
 using PharmaERP.Application.Location;
 using PharmaERP.Shared.Security;
@@ -13,6 +14,7 @@ namespace PharmaERP.Web.Api.Controllers.V1;
 public class LocationController(ILocationService locationService) : ControllerBase
 {
     [HttpPost("ping")]
+    [EnableRateLimiting(RateLimits.PerUser)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> Ping(LocationPingRequest request, CancellationToken ct)
@@ -34,6 +36,7 @@ public class LocationController(ILocationService locationService) : ControllerBa
     /// <summary>Uploads points the app buffered (up to 500 per call). Safe to re-send: points whose
     /// clientId is already stored are counted as duplicates, not stored again.</summary>
     [HttpPost("pings")]
+    [EnableRateLimiting(RateLimits.PerUser)]
     [ProducesResponseType(typeof(LocationPingBatchResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<LocationPingBatchResult>> Pings(LocationPingBatchRequest request, CancellationToken ct)

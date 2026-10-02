@@ -27,7 +27,8 @@ public sealed class AuthService(
     Requests.ReturnEntryManager returns,
     Requests.ExpenseEntryManager expenses,
     Notifications.NotificationCenter notifications,
-    Notifications.PushService push)
+    Notifications.PushService push,
+    PasskeyService passkeys)
 {
     public async Task<LoginOutcome> LoginAsync(string email, string password, CancellationToken ct = default)
     {
@@ -38,7 +39,24 @@ public sealed class AuthService(
             case AuthCallStatus.Unreachable: return LoginOutcome.Unreachable;
         }
 
-        var login = result.Response!;
+        return await CompleteSignInAsync(result.Response!, ct);
+    }
+
+    /// <summary>Fingerprint / face sign-in with this phone's passkey (plan 9.3).</summary>
+    public async Task<PasskeyOutcome> LoginWithPasskeyAsync(CancellationToken ct = default)
+    {
+        var (outcome, login) = await passkeys.SignInAsync(ct);
+        if (outcome != PasskeyOutcome.Succeeded || login is null) return outcome;
+        return await CompleteSignInAsync(login, ct) switch
+        {
+            LoginOutcome.Succeeded => PasskeyOutcome.Succeeded,
+            LoginOutcome.NotARepresentative => PasskeyOutcome.NotARepresentative,
+            _ => PasskeyOutcome.Rejected
+        };
+    }
+
+    private async Task<LoginOutcome> CompleteSignInAsync(PharmaERP.Web.Api.Contracts.LoginResponse login, CancellationToken ct)
+    {
         if (!login.Roles.Contains(Roles.Representative))
         {
             // Managers and back-office staff use Web.Mvc; don't leave a live refresh token behind.
