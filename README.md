@@ -1,171 +1,197 @@
-# PharmaERP: نظام إدارة المبيعات والمناديب لشركات الأدوية
+# PharmaERP: Sales and Field Force Management for Pharmaceutical Companies
 
-نظام متكامل بيربط **المندوب في الشارع** بـ **الإدارة في المكتب** في مكان واحد. بيغطي الزيارات، والطلبيات، والتحصيل، والعهدة، والمخازن، والمرتجعات، والمشتريات، والمصروفات، والتارجت. كل حاجة بتتسجل في وقتها، وعليها موقع وتاريخ، وكل خطوة ليها مين عملها.
+PharmaERP connects **the representative in the field** with **management in the office**, in one system. It covers:
+- visits;
+- orders;
+- collections;
+- custody;
+- warehouses;
+- returns;
+- purchasing;
+- expenses;
+- targets.
+
+Every action is recorded as it happens, with a location, a time and the name of the person who did it.
 
 ---
 
-## المشكلة اللي بيحلها
+## The problem it solves
 
-في أغلب شركات الأدوية المتابعة بتتعمل بالطريقة دي:
-- المندوب بيبعت تقرير الزيارات على واتساب أو ورق آخر اليوم، ومحدش متأكد إنه زار فعلًا.
-- الطلبيات بتتاخد بالتليفون، وبتتراجع يدوي، وبتتأخر.
-- الفلوس اللي مع المندوب وبضاعة العهدة بتتحسب على شيت Excel، والفروقات بتظهر متأخر.
-- الإدارة مش شايفة الصورة غير آخر الشهر، بعد ما يكون فات وقت التصحيح.
+At most pharmaceutical companies, field work is followed up like this:
+- **Visit reports.** Reps send them over WhatsApp or on paper at the end of the day, and nobody can be sure the visit actually happened.
+- **Orders.** They are taken over the phone, re-keyed by hand, and arrive late.
+- **Cash and stock with reps.** They are tracked in Excel sheets, so discrepancies surface too late.
+- **The overall picture.** Management only sees it at the end of the month, when it is too late to correct anything.
 
-**PharmaERP بيقلب ده:** المدير بيشوف اللي بيحصل النهارده، مش اللي حصل الشهر اللي فات.
+**PharmaERP turns this around.** Managers see what is happening today, not what happened last month.
 
 ---
 
-## مين الجمهور المستهدف
+## Who it is for
 
-**الشركات:**
-- مصانع الأدوية ومستحضرات التجميل والمكملات اللي عندها فريق مناديب طبيين بيزوروا الدكاترة.
-- وكلاء وموزعين الأدوية اللي عندهم مناديب مبيعات بيبيعوا للصيدليات ويحصّلوا منها.
-- الشركات اللي بتجمع الاتنين: دعاية طبية عند الدكتور، وبيع وتحصيل عند الصيدلية.
-- مناسب لفرق من **10 مناديب لحد مئات المناديب** موزعين على مناطق ومديرين مناطق.
+**Companies:**
+- **Manufacturers** of pharmaceuticals, cosmetics and supplements whose medical reps visit doctors.
+- **Pharmaceutical agents and distributors** whose sales reps sell to pharmacies and collect payment from them.
+- **Companies that do both:** medical promotion with doctors, plus selling and collecting at pharmacies.
 
-**المستخدمين جوه الشركة:**
+It suits teams of anywhere from **10 to several hundred reps**, spread over territories and district managers.
 
-| الدور | بيستخدم النظام في إيه |
+**Users inside the company:**
+
+| Role | What they use it for |
 |---|---|
-| **المندوب** | تطبيق على موبايله: خطة اليوم، والزيارات، والطلبيات، والتحصيل، والمرتجع، والمصروفات، وعهدته |
-| **مدير المنطقة** | داشبورد منطقته، واعتماد خطط الزيارات، ومتابعة مناديبه على الخريطة، ومراجعة الزيارات المتعلّمة |
-| **مدير المبيعات** | اعتماد الطلبيات، والتارجت والأداء، والعملاء والائتمان |
-| **الإدارة العليا** | لوحة تنفيذية واحدة فيها ملخص كل الأقسام |
-| **المالية** | مراجعة التحصيل والإيصالات، وتسوية عهدة الفلوس، والمصروفات، ومستحقات الموردين |
-| **المخازن** | المخزون والتشغيلات والصلاحية، وصرف العهدة للمناديب، واستلام المرتجعات |
-| **المشتريات** | الموردين، وأوامر الشراء، والاستلام |
-| **مدير النظام** | المستخدمين والصلاحيات، وسجل كل التعديلات |
+| **Representative** | A phone app for the day's plan, visits, orders, collections, returns, expenses, and their own custody |
+| **District manager** | Their district's dashboard, approving visit plans, following reps on a map, reviewing flagged visits |
+| **Sales manager** | Approving orders, targets and performance, customers and credit |
+| **Senior management** | One executive dashboard summarising every department |
+| **Finance** | Reviewing collections and receipts, settling reps' cash custody, expenses, supplier payments due |
+| **Warehouse** | Stock, batches and expiry dates, issuing custody to reps, receiving returns |
+| **Procurement** | Suppliers, purchase orders, goods receipts |
+| **System administrator** | Users and permissions, plus a full log of every change |
 
-كل دور بيشوف اللي يخصه بس.
-
----
-
-## المميزات
-
-### تطبيق المندوب (على الموبايل)
-- **من غير تحميل من المتجر:** بيتفتح من رابط، ويتثبت على الشاشة الرئيسية لأندرويد وآيفون في ثواني.
-- **شغال من غير إنترنت:** المندوب بيكمّل شغله في البدروم وفي المناطق اللي الشبكة فيها ضعيفة. كل حاجة بتتحفظ على الموبايل وبتتبعت لوحدها لما النت يرجع، **من غير ما حاجة تضيع أو تتسجل مرتين**.
-- **خطة اليوم على خريطة:** الزيارات مترتبة، وكل زيارة باينة هل اتعملت، أو عليها الدور، أو فاتت.
-- **زيارة مثبتة بالموقع:** المندوب بيسجل دخوله وخروجه عند العميل بالـ GPS، والنظام بيقارن موقعه بموقع العميل المتسجل. لو كان بعيد، لازم يكتب السبب، والزيارة بتتعلّم للمدير.
-- **طلبية من جوه الزيارة:** بالأصناف والخصم، وتتحفظ مسودة وتتبعت للاعتماد.
-- **تحصيل بصورة الإيصال**، وكمان **المرتجعات** و**المصروفات** بصورة الفاتورة.
-- **عهدته قدامه:** البضاعة والفلوس اللي معاه، وكل حركة عليها.
-- **إشعارات فورية** لما الطلبية أو المصروف يتوافق عليه أو يترفض، حتى والتطبيق مقفول.
-- **دخول بالبصمة أو بالوش** بدل كلمة السر.
-
-### العملاء
-- **الدكاترة:** التخصص، والتصنيف (مثلًا A وB وC) وعدد الزيارات المطلوبة في الشهر لكل تصنيف، والحالة (محتمل، نشط، غير نشط).
-- **الصيدليات:** **حد ائتمان** و**مدة سداد**. النظام بيحسب رصيد كل صيدلية والمتأخر عليها، وبيمنع اعتماد أي طلبية تخلّي الرصيد يعدّي الحد.
-- **قوائم العملاء:** قوائم ثابتة أو بتتحدث لوحدها، ونقل عملاء بالجملة بين المناديب، مع سجل لكل نقل.
-- **المتابعات:** مكالمة، أو زيارة، أو توصيل عينة، بميعاد ومسؤول.
-- **تصحيح مواقع العملاء:** المندوب بيقترح الموقع الصح من مكانه، والمدير بيوافق.
-
-### خطط الزيارات
-- المندوب أو المدير بيعمل الخطة، ومدير المنطقة بيعتمدها.
-- تنبيه لو زيارة مخططة ما اتسجلتش.
-- قياس **نسبة التغطية**: عدد الزيارات اللي اتعملت فعلًا مقابل المطلوب حسب تصنيف كل دكتور.
-
-### المبيعات والطلبيات
-- دورة الطلبية كاملة: مسودة، اعتماد أو رفض مع السبب، ثم التنفيذ.
-- المبيعات مربوطة بالصنف والتشغيلة والمندوب والعميل.
-
-### التحصيل والعهدة
-- تحصيل بطرق كتير: كاش، شيك، تحويل بنكي، أو كارت. التحصيل بيتوزع على الفواتير المفتوحة، الأقدم فالأقدم، أو على فواتير محددة.
-- مراجعة المالية للتحصيل بالإيصال.
-- **تسوية عهدة الفلوس** بين المندوب والخزنة.
-- **جرد عهدة البضاعة:** المندوب بيعد اللي معاه، وأي فرق بين العدد والرصيد في النظام بيظهر فورًا ويتسوّى بحركة موثّقة.
-- تنبيه لو عهدة فضلت مع المندوب أكتر من اللازم.
-
-### المخازن والمنتجات
-- مخازن متعددة، و**تشغيلات بتاريخ صلاحية**.
-- تنبيهات **نقص المخزون** و**قرب انتهاء الصلاحية**.
-- صرف عهدة للمناديب واستلام منهم، وكل حركة متسجلة.
-
-### المرتجعات
-- مرتجع من الصيدلية للمندوب، ومن المندوب للمخزن.
-- السبب لازم يتحدد: منتهي الصلاحية، أو تالف، أو ما اتباعش، أو غيره. والمرتجع ليه اعتماد.
-- النظام بيتأكد إن التشغيلة المرتجعة هي فعلًا اللي اتباعت.
-
-### المشتريات والموردين
-- أوامر شراء، واستلام بضاعة جزئي أو كامل بالتشغيلات.
-- مدفوعات الموردين، وتنبيه بالمستحقات.
-
-### المصروفات
-- المندوب بيسجل مصروفاته (انتقالات، ضيافة عملاء، وغيرها) بصورة الفاتورة، والمدير بيعتمد أو يرفض.
-
-### الأداء والتارجت
-- تارجت شهري لكل مندوب: مبيعات، وتحصيل، وتغطية زيارات.
-- نسبة التحقيق لحظة بلحظة، مش آخر الشهر.
-
-### التتبع والرقابة
-- **خريطة للمدير:** أماكن زيارات المناديب، وخط السير في مواعيد الشغل.
-- **الزيارات المتعلّمة:** زيارة بعيدة عن العميل، أو قصيرة زيادة عن اللزوم، أو ساعة الموبايل فيها متغيّرة بالإيد، أو برّه منطقة المندوب.
-- **تتبع أي معاملة:** من أمر الشراء من المورد، للمخزن، لعهدة المندوب، للبيع، للتحصيل، لحد توريد الفلوس.
-- **سجل كامل للتعديلات:** مين عدّل إيه وإمتى.
-
-### لوحات المتابعة
-- **لوحة الإدارة التنفيذية:** ملخص كل الأقسام في صفحة واحدة.
-- **لوحة مدير المنطقة:** بتنزل من المنطقة للمندوب للعميل.
-- **تقرير البايلوت:** جودة شغل التطبيق في الميدان لكل مندوب، وبيتصدّر Excel.
+Each role sees only what concerns it.
 
 ---
 
-## ليه سهل
+## Features
 
-- **المندوب مش محتاج تدريب طويل:** الشاشات مبنية على يوم المندوب، يعني خطة، فزيارة، فطلبية، والأزرار كبيرة ومناسبة للاستخدام بإيد واحدة. وفيه [دليل استخدام بالعربي](docs/field-app-guide.ar.md) للمناديب.
-- **مفيش تطبيق يتنزل أو يتحدّث من المتجر:** التحديث بيوصل لكل الموبايلات لوحده، والمندوب بيضغط **Update** لما يخلص اللي في إيده.
-- **مفيش شغل بيضيع:** النت يقطع، أو الموبايل يفصل، أو التطبيق يتقفل، والبيانات محفوظة وبتتبعت بعدين.
-- **كل حاجة متوصلة ببعض:** الطلبية بتأثر على رصيد الصيدلية، والتحصيل بيقفل فواتيرها، والمرتجع بيرجع للمخزن. مفيش إدخال نفس البيانات مرتين.
-- **الإدارة من المتصفح:** من غير أي برامج على أجهزة المكتب.
+### The representative's app (on the phone)
+- **Install:** opens from a link and installs on the home screen of Android and iPhone in seconds, with no app store.
+- **Offline:** reps keep working in basements and areas with poor coverage. Everything is saved on the phone and sent automatically when the connection returns, **with nothing lost and nothing recorded twice**.
+- **Today's plan:** visits in order, on a map and in a list, each marked done, next or missed.
+- **Location-verified visits:** reps check in and out at the customer with GPS, and the system compares their position with the customer's saved location. If they are too far away, they must give a reason, and the visit is flagged for their manager.
+- **Orders:** taken during the visit, with products and discounts. They can be saved as drafts and submitted for approval.
+- **Photo evidence:** a photo of the receipt for collections, and of the invoice for **returns** and **expenses**.
+- **Custody:** the stock and cash the rep holds, with every movement listed.
+- **Notifications:** sent instantly when an order or an expense is approved or rejected, even while the app is closed.
+- **Sign-in:** with a fingerprint or face instead of a password.
+
+### Customers
+- **Doctors.** Each has a specialty and a status (prospect, active, inactive). Each also has a classification, for example A, B or C, and every classification sets a required number of visits per month.
+- **Pharmacies.** Each has a **credit limit** and **payment terms**. The system works out every pharmacy's balance and overdue amount, and blocks the approval of any order that would take the balance over the limit.
+- **Customer lists.** Lists can be static or update automatically. Customers can be moved between reps in bulk, and every transfer is logged.
+- **Follow-ups.** A call, a visit or a sample delivery, with a due date and an owner.
+- **Correcting customer locations.** A rep proposes the correct location from where they stand, and a manager approves it.
+
+### Visit plans
+- The rep or a manager prepares the plan, and the district manager approves it.
+- An alert fires when a planned visit isn't logged.
+- **Coverage is measured:** visits actually made against the number required by each doctor's classification.
+
+### Sales and orders
+- The full order cycle: draft, then approval or rejection with a reason, then fulfilment.
+- Each sale is linked to the product, batch, rep and customer.
+
+### Collections and custody
+- **Payment methods:** cash, cheque, bank transfer or card.
+- **Allocation:** a payment is applied to open invoices oldest first, or to specific invoices.
+- **Finance review** of collections against the receipt photo.
+- **Cash custody settlement** between the rep and the cashier.
+- **Stock custody counts.** The rep counts what they hold, and any difference from the balance in the system shows up at once. The difference is settled with a documented movement.
+- An alert fires when custody has stayed with a rep for too long.
+
+### Warehouses and products
+- Multiple warehouses, and **batches with expiry dates**.
+- Alerts for **low stock** and **approaching expiry**.
+- Stock issued to reps as custody and received back from them, with every movement recorded.
+
+### Returns
+- **Two flows:** pharmacy to rep, and rep to warehouse.
+- **Every return needs a reason** (expired, damaged, unsold or other) and goes through approval.
+- **Batch check:** the system confirms that the returned batch is the one that was actually sold.
+
+### Purchasing and suppliers
+- Purchase orders, and goods received in full or in part, by batch.
+- Supplier payments, with alerts when they fall due.
+
+### Expenses
+- Reps record expenses such as transport and client entertainment with a photo of the invoice. A manager approves or rejects each one.
+
+### Performance and targets
+- A monthly target per rep for sales, collections and visit coverage.
+- Achievement is shown live, not at the end of the month.
+
+### Tracking and control
+- **A map for managers:** where reps made their visits, and their route during working hours.
+- **Flagged visits:** a visit is flagged when it was:
+  - too far from the customer;
+  - too short;
+  - made with a phone clock that was set by hand;
+  - outside the rep's territory.
+- **Trace any transaction** from the supplier's purchase order, through the warehouse, the rep's custody, the sale and the collection, to the cash handed in.
+- **A complete change log:** who changed what, and when.
+
+### Dashboards
+- **Executive dashboard:** every department summarised on one page.
+- **District manager dashboard:** drills down from district to rep to customer.
+- **Field pilot report:** how well the app is working in the field for each rep, exportable to Excel.
 
 ---
 
-## إزاي تحقق أقصى استفادة
+## Why it is easy to use
 
-### 1. جهّز البيانات صح
-النظام قوته في دقة بياناته:
-- **مواقع العملاء:** لو مش متسجلة، خلّي المناديب يسجلوها من أول زيارة، وراجع الاقتراحات.
-- **تصنيف الدكاترة** وعدد الزيارات المطلوبة لكل تصنيف.
-- **حدود الائتمان ومدد السداد** لكل صيدلية.
-- **أرصدة العهدة الافتتاحية** لكل مندوب، بجرد فعلي.
+- **Reps don't need long training.** The screens follow the rep's day: plan, then visit, then order. The buttons are large and work one-handed. An [English user guide](docs/field-app-guide.md) and an [Arabic one](docs/field-app-guide.ar.md) are available for reps.
+- **Nothing to download or update from a store.** Updates reach every phone automatically, and the rep taps **Update** once they have finished what they are doing.
+- **No work is lost.** If the connection drops, the phone switches off or the app is closed, the data is kept and sent later.
+- **Everything is connected.**
+  - An order changes the pharmacy's balance.
+  - A collection settles its invoices.
+  - A return goes back into stock.
 
-### 2. ابدأ بأسبوع بايلوت
-- اختار **3 لـ 5 مناديب** من مناطق مختلفة، فيهم منطقة الشبكة فيها ضعيفة.
-- تابع **تقرير البايلوت** يوميًا: دقة الموقع، وسرعته، والزيارات المتعلّمة، والزيارات اللي ما اتقفلتش.
-- صلّح الأسباب قبل التعميم: مواقع عملاء غلط، أو إعدادات موبايلات، أو تدريب.
+  Nothing is entered twice.
+- **Management works in the browser,** with no software to install on office computers.
 
-### 3. عمّم على مراحل
-منطقة منطقة، ومدير المنطقة هو اللي بيقود التشغيل في منطقته.
+---
 
-### 4. اعمله روتين
-| مين | كل يوم | كل أسبوع | كل شهر |
+## Getting the most out of it
+
+### 1. Get the data right
+The system is only as good as its data:
+- **Customer locations.** If they aren't recorded, have reps record them on their first visit, and review the proposals.
+- **Doctor classifications,** and the visits required for each.
+- **Credit limits and payment terms** for every pharmacy.
+- **Opening custody balances** for every rep, from a physical count.
+
+### 2. Start with a one-week pilot
+- Choose **3 to 5 reps** from different areas, including one with weak coverage.
+- Check the **Field Pilot report** every day for:
+  - location accuracy and speed;
+  - flagged visits;
+  - visits left open.
+- Fix the causes before the full rollout: wrong customer locations, phone settings, or training.
+
+### 3. Roll out in stages
+Go territory by territory, with each district manager leading the rollout in their own district.
+
+### 4. Make it a routine
+
+| Who | Daily | Weekly | Monthly |
 |---|---|---|---|
-| **مدير المنطقة** | يعتمد الخطط، ويراجع الزيارات المتعلّمة | التغطية لكل مندوب، والزيارات المخططة اللي ما اتعملتش | تقييم المناديب مقابل التارجت |
-| **مدير المبيعات** | يعتمد الطلبيات | العملاء اللي قربوا من حد الائتمان أو متأخرين | التارجت الجديد |
-| **المالية** | تراجع التحصيل بالإيصالات | تسوية عهدة الفلوس | تسوية الحسابات وأعمار الديون |
-| **المخازن** | صرف العهدة والمرتجعات | قرب الصلاحية ونقص المخزون | جرد عهدة البضاعة مع المناديب |
-| **الإدارة** | — | اللوحة التنفيذية | مقارنة المناطق والأداء |
+| **District manager** | Approve plans, review flagged visits | Coverage per rep, planned visits that weren't made | Review reps against their targets |
+| **Sales manager** | Approve orders | Customers near their credit limit or overdue | Set new targets |
+| **Finance** | Review collections against receipts | Settle cash custody | Reconcile accounts, debt ageing |
+| **Warehouse** | Issue custody, receive returns | Approaching expiry, low stock | Count stock custody with reps |
+| **Management** | — | Executive dashboard | Compare territories and performance |
 
-### 5. استخدم التنبيهات
-النظام بينبّه بنفسه:
-- طلبية أو مصروف مستني اعتماد؛
-- زيارة مخططة ما اتسجلتش؛
-- مخزون قليل أو صلاحية قربت؛
-- عهدة طوّلت مع المندوب؛
-- مستحقات مورد.
+### 5. Use the alerts
+The system raises alerts on its own for:
+- orders or expenses awaiting approval;
+- planned visits that weren't logged;
+- low stock or approaching expiry;
+- custody held by a rep for too long;
+- supplier payments falling due.
 
-خلّي كل مسؤول يتعامل مع تنبيهاته أول بأول، بدل ما يدوّر بنفسه.
+Have each person deal with their alerts as they arrive, instead of searching for problems themselves.
 
-### القيمة اللي هتشوفها
-- **زيارات حقيقية:** كل زيارة عليها موقع ووقت، والتغطية بتتقاس بالأرقام.
-- **طلبيات أسرع:** الطلبية بتتبعت من عند الصيدلية وبتتعتمد في نفس اليوم.
-- **فلوس أقل في الشارع:** التحصيل متسجل بالإيصال، والعهدة بتتسوّى أول بأول.
-- **فاقد أقل:** تنبيهات الصلاحية، وتتبع التشغيلات في المرتجعات.
-- **قرارات أسرع:** الأرقام قدام الإدارة كل يوم، مش آخر الشهر.
+### The value you will see
+- **Real visits:** every visit carries a location and a time, and coverage is measured in numbers.
+- **Faster orders:** an order is sent from the pharmacy and approved the same day.
+- **Less cash in the field:** collections are backed by receipts, and custody is settled as you go.
+- **Less waste:** expiry alerts, plus batch tracing on returns.
+- **Faster decisions:** management sees the numbers every day, not at the end of the month.
 
 ---
 
-## للفريق التقني
-- خطوات النشر والإعدادات: [deploy/README.md](deploy/README.md)
-- دليل المندوب: [docs/field-app-guide.ar.md](docs/field-app-guide.ar.md)
+## For the technical team
+- Deployment and configuration: [deploy/README.md](deploy/README.md)
+- Representative's guide: [docs/field-app-guide.md](docs/field-app-guide.md)
