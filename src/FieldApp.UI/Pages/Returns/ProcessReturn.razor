@@ -1,0 +1,216 @@
+@page "/returns/new"
+@using PharmaERP.Application.Custody
+@using PharmaERP.Application.Pharmacies
+@using PharmaERP.Application.Products
+@using PharmaERP.Application.Warehouses
+@using PharmaERP.Domain.Enums
+@inject ReturnEntryManager Returns
+@inject RequestsStore Store
+@inject MasterDataSync MasterData
+@inject INetworkStatus Network
+@inject NavigationManager Navigation
+
+<PageTitle>Process return · Field CRM</PageTitle>
+
+@*
+  Process Return (wireframe 11). From a customer: stock comes back to the rep. To the warehouse: the rep hands
+  custody stock back, never more than they hold. Nothing moves until a manager approves.
+*@
+<a class="back-link" href="returns">‹ My Returns</a>
+<h1 class="page-title mt-2">Process return</h1>
+
+<div class="segmented" role="tablist">
+    @foreach (var flow in Enum.GetValues<ReturnFlowType>())
+    {
+        <button type="button" role="tab" aria-selected="@(_draft.Flow == flow ? "true" : "false")"
+                class="@(_draft.Flow == flow ? "active" : "")" @onclick="() => SetFlow(flow)">@RequestRules.Label(flow)</button>
+    }
+</div>
+
+<section class="app-card">
+    @if (_draft.Flow == ReturnFlowType.CustomerToRepresentative)
+    {
+        <label class="form-label fw-semibold" for="pharmacy">Pharmacy returning the stock</label>
+        <select id="pharmacy" class="form-select" value="@(_draft.PharmacyId ?? 0)" @onchange="e => _draft.PharmacyId = ParseId(e.Value)">
+            <option value="0">Choose a pharmacy…</option>
+            @foreach (var p in _pharmacies)
+            {
+                <option value="@p.Id">@p.Name@(p.City is { } c ? $" · {c}" : "")</option>
+            }
+        </select>
+
+        <label class="form-label fw-semibold mt-3" for="product">Product</label>
+        <select id="product" class="form-select" value="@_draft.ProductId" @onchange="e => SetProduct(ParseId(e.Value) ?? 0)">
+            <option value="0">Choose a product…</option>
+            @foreach (var p in _products)
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </select>
+        @if (BatchesOf(_draft.ProductId) is { Count: > 0 } batches)
+        {
+            <label class="form-label fw-semibold mt-3" for="batch">Batch (if you know it)</label>
+            <select id="batch" class="form-select" value="@(_draft.ProductBatchId ?? 0)" @onchange="e => _draft.ProductBatchId = ParseId(e.Value)">
+                <option value="0">Not sure</option>
+                @foreach (var b in batches)
+                {
+                    <option value="@b.ProductBatchId">@b.BatchNumber@(b.ExpiryDate is { } x ? $" · exp {x:MMM yyyy}" : "")</option>
+                }
+            </select>
+        }
+    }
+    else
+    {
+        <label class="form-label fw-semibold" for="warehouse">Warehouse</label>
+        @if (_warehouses.Count == 0)
+        {
+            <p class="small text-secondary mb-0">The warehouse list isn't on this phone yet — connect to the internet once.</p>
+        }
+        else
+        {
+            <select id="warehouse" class="form-select" value="@(_draft.WarehouseId ?? 0)" @onchange="e => _draft.WarehouseId = ParseId(e.Value)">
+                <option value="0">Choose a warehouse…</option>
+                @foreach (var w in _warehouses)
+                {
+                    <option value="@w.Id">@w.Name@(w.Location is { } l ? $" · {l}" : "")</option>
+                }
+            </select>
+        }
+
+        <div class="form-label fw-semibold mt-3">From your custody</div>
+        @if (_returnable.Count == 0)
+        {
+            <p class="small text-secondary mb-0">You have no stock in custody to return.</p>
+        }
+        @foreach (var line in _returnable)
+        {
+            var selected = _draft.ProductId == line.ProductId && _draft.ProductBatchId == line.ProductBatchId;
+            <button type="button" class="picker-row custody-pick @(selected ? "selected" : "")" @onclick="() => PickCustody(line)">
+                <span>
+                    @line.ProductName
+                    <span class="d-block small text-secondary">@(line.BatchNumber ?? "No batch")@(line.ExpiryDate is { } x ? $" · exp {x:MMM yyyy}" : "")</span>
+                </span>
+                <span class="fw-semibold">@line.Balance</span>
+            </button>
+        }
+    }
+</section>
+
+<section class="app-card">
+    <div class="d-flex gap-3 align-items-end">
+        <div>
+            <span class="kpi-label">Quantity</span>
+            <div class="qty-stepper" role="group" aria-label="Quantity">
+                <button type="button" aria-label="Fewer" @onclick="() => _draft.Quantity = Math.Max(1, _draft.Quantity - 1)">−</button>
+                <input type="number" inputmode="numeric" min="1" value="@_draft.Quantity" aria-label="Quantity value"
+                       @onchange="e => _draft.Quantity = int.TryParse(e.Value?.ToString(), out var q) ? Math.Max(1, q) : _draft.Quantity" />
+                <button type="button" aria-label="More" @onclick="() => _draft.Quantity++">+</button>
+            </div>
+        </div>
+        @if (_draft.Flow == ReturnFlowType.RepresentativeToWarehouse && Held is { } held)
+        {
+            <span class="small text-secondary pb-2">of @held in your custody</span>
+        }
+    </div>
+
+    <div class="form-label fw-semibold mt-3">Reason</div>
+    <div class="filter-chips mb-0" role="radiogroup" aria-label="Reason">
+        @foreach (var reason in Enum.GetValues<ReturnReason>())
+        {
+            <button type="button" role="radio" aria-checked="@(_draft.Reason == reason ? "true" : "false")"
+                    class="chip @(_draft.Reason == reason ? "active" : "")" @onclick="() => _draft.Reason = reason">@reason</button>
+        }
+    </div>
+
+    <label class="form-label fw-semibold mt-3" for="notes">Notes</label>
+    <textarea id="notes" class="form-control" rows="2" maxlength="500" @bind="_draft.Notes" @bind:event="oninput"></textarea>
+</section>
+
+<div class="alert alert-info py-2 small">Requires manager approval — stock moves only once it's approved.</div>
+@if (_problems.Count > 0)
+{
+    <div class="alert alert-danger py-2 small">@_problems[0]</div>
+}
+<button class="btn btn-primary w-100 mb-3" @onclick="SubmitAsync" disabled="@_busy">Submit return</button>
+
+@code {
+    [SupplyParameterFromQuery(Name = "type")] public string? TypeQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "pharmacyId")] public int? PharmacyQuery { get; set; }
+
+    private readonly ReturnDraft _draft = new();
+    private IReadOnlyList<PharmacyListItemDto> _pharmacies = [];
+    private IReadOnlyList<ProductListItemDto> _products = [];
+    private IReadOnlyList<WarehouseListItemDto> _warehouses = [];
+    private IReadOnlyList<RepStockCustodyBalanceDto> _custody = [];
+    private IReadOnlyList<RepStockCustodyBalanceDto> _returnable = [];
+    private IReadOnlyList<string> _problems = [];
+    private bool _busy;
+
+    private int? Held => _draft.ProductId > 0
+        ? _custody.Where(c => c.ProductId == _draft.ProductId && (_draft.ProductBatchId is null || c.ProductBatchId == _draft.ProductBatchId)).Sum(c => c.Balance)
+        : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.Equals(TypeQuery, "warehouse", StringComparison.OrdinalIgnoreCase)) _draft.Flow = ReturnFlowType.RepresentativeToWarehouse;
+        _draft.PharmacyId = PharmacyQuery;
+        _pharmacies = (await MasterData.GetPharmaciesAsync())?.Data.OrderBy(p => p.Name).ToList() ?? [];
+        _products = (await MasterData.GetProductsAsync())?.Data.OrderBy(p => p.Name).ToList() ?? [];
+        _custody = (await MasterData.GetCustodyAsync())?.Data ?? [];
+        _returnable = RequestRules.Returnable(_custody);
+        _warehouses = (await Store.GetWarehousesAsync(refresh: Network.IsOnline))?.Data ?? [];
+        if (_warehouses.Count == 1) _draft.WarehouseId = _warehouses[0].Id;
+    }
+
+    private IReadOnlyList<RepStockCustodyBalanceDto> BatchesOf(int productId) =>
+        _custody.Where(c => c.ProductId == productId && c.ProductBatchId is not null).DistinctBy(c => c.ProductBatchId).ToList();
+
+    private void SetFlow(ReturnFlowType flow)
+    {
+        _draft.Flow = flow;
+        _draft.ProductId = 0;
+        _draft.ProductBatchId = null;
+        _problems = [];
+    }
+
+    private void SetProduct(int productId)
+    {
+        _draft.ProductId = productId;
+        _draft.ProductBatchId = null;
+    }
+
+    private void PickCustody(RepStockCustodyBalanceDto line)
+    {
+        _draft.ProductId = line.ProductId;
+        _draft.ProductBatchId = line.ProductBatchId;
+        // Expired stock is the usual reason to hand it back.
+        if (line.ExpiryDate is { } e && e < DateOnly.FromDateTime(DateTime.Now)) _draft.Reason = ReturnReason.Expired;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _problems = RequestRules.Validate(_draft, _custody);
+        if (_problems.Count > 0) return;
+        _draft.ProductName = _products.FirstOrDefault(p => p.Id == _draft.ProductId)?.Name
+                             ?? _custody.FirstOrDefault(c => c.ProductId == _draft.ProductId)?.ProductName ?? $"#{_draft.ProductId}";
+        _draft.CounterpartName = _draft.Flow == ReturnFlowType.CustomerToRepresentative
+            ? _pharmacies.FirstOrDefault(p => p.Id == _draft.PharmacyId)?.Name ?? "Pharmacy"
+            : _warehouses.FirstOrDefault(w => w.Id == _draft.WarehouseId)?.Name ?? "Warehouse";
+        _busy = true;
+        try
+        {
+            await Returns.SendAsync(_draft);
+            Navigation.NavigateTo("returns?saved=1");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _problems = [ex.Message];
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static int? ParseId(object? value) => int.TryParse(value?.ToString(), out var id) && id > 0 ? id : null;
+}

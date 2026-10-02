@@ -6,7 +6,10 @@ public enum ExpenseType
     Meals = 1,
     Accommodation = 2,
     Fuel = 3,
-    Other = 4
+    Other = 4,
+
+    /// <summary>Wireframe 12 — hospitality for doctors or pharmacists.</summary>
+    ClientEntertainment = 5
 }
 
 public enum ExpenseStatus

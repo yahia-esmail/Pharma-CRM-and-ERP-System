@@ -62,6 +62,7 @@
         {
             <div class="alert alert-warning py-2 small" role="status">
                 @expiring.Sum(r => r.Balance) unit(s) in @expiring.Count batch(es) expire within @CustodyRules.NearExpiryDays days or already have — sell or return them first.
+                <a class="d-block mt-1" href="returns/new?type=warehouse">Return to warehouse ›</a>
             </div>
         }
 

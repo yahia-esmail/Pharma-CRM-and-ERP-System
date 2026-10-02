@@ -391,7 +391,7 @@ html, body {
 }
 .next-stop-name { font-weight: 600; }
 
-.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+.quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
 .quick-actions a {
     display: flex;
     flex-direction: column;
@@ -558,3 +558,10 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
     .card-skeleton { animation: none; }
 }
+
+/* ---- Returns & expenses --------------------------------------------------------------------- */
+.custody-pick { border: 1px solid var(--fa-border); border-radius: 10px; margin-bottom: 6px; align-items: center; }
+.custody-pick.selected { border-color: var(--fa-primary); box-shadow: 0 0 0 1px var(--fa-primary) inset; }
+.expense-types { flex-wrap: wrap; overflow: visible; }
+.expense-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.expense-grid label { display: flex; flex-direction: column; min-width: 0; }

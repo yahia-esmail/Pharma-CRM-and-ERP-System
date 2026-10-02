@@ -3,6 +3,9 @@ using PharmaERP.Application.Collections;
 using PharmaERP.Application.Custody;
 using PharmaERP.Application.Dashboard;
 using PharmaERP.Application.Doctors;
+using PharmaERP.Application.Expenses;
+using PharmaERP.Application.Returns;
+using PharmaERP.Application.Warehouses;
 using PharmaERP.Application.Orders;
 using PharmaERP.Application.Pharmacies;
 using PharmaERP.Application.Products;
@@ -76,6 +79,24 @@ public sealed class CustodyApi(HttpClient http)
 
     public async Task<IReadOnlyList<CustodyTransactionDto>> GetMyLedgerAsync(int productId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<CustodyTransactionDto>>($"api/v1/Custody/mine/ledger?productId={productId}", ApiJson.Options, ct) ?? [];
+}
+
+public sealed class ReturnsApi(HttpClient http)
+{
+    public async Task<IReadOnlyList<ReturnTransactionDto>> GetMineAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<ReturnTransactionDto>>("api/v1/Returns/mine", ApiJson.Options, ct) ?? [];
+}
+
+public sealed class ExpensesApi(HttpClient http)
+{
+    public async Task<IReadOnlyList<ExpenseDto>> GetMineAsync(int take = 50, CancellationToken ct = default) =>
+        (await http.GetFromJsonAsync<PagedResult<ExpenseDto>>($"api/v1/Expenses/mine?pageNumber=1&pageSize={take}", ApiJson.Options, ct))?.Items ?? [];
+}
+
+public sealed class WarehousesApi(HttpClient http)
+{
+    public async Task<IReadOnlyList<WarehouseListItemDto>> GetAllAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<WarehouseListItemDto>>("api/v1/Warehouses", ApiJson.Options, ct) ?? [];
 }
 
 public sealed class CollectionsApi(HttpClient http)

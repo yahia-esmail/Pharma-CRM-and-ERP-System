@@ -23,4 +23,7 @@ public class ExpenseSaveRequest
     public int TerritoryId { get; set; }
     public string? Description { get; set; }
     public List<int> AttachmentIds { get; set; } = [];
+
+    /// <summary>Send for approval in the same request, so the field app's outbox never leaves a half-done expense.</summary>
+    public bool Submit { get; set; }
 }

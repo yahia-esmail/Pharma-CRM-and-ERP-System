@@ -1,0 +1,131 @@
+@page "/expenses"
+@using PharmaERP.Application.Expenses
+@using PharmaERP.Domain.Enums
+@implements IDisposable
+@inject RequestsStore Store
+@inject ExpenseEntryManager Expenses
+@inject Outbox Outbox
+@inject INetworkStatus Network
+
+<PageTitle>My Expenses · Field CRM</PageTitle>
+
+@* The rep's expenses and their approval status; a draft can be submitted from here. *@
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title mb-0">My Expenses</h1>
+        @if (_server is { } s)
+        {
+            <div class="small text-secondary">as of @s.SavedAtUtc.ToLocalTime().ToString("HH:mm")</div>
+        }
+    </div>
+    <a class="btn btn-primary btn-sm" href="expenses/new">+ Expense</a>
+</div>
+
+@if (SavedQuery is "submitted" or "draft")
+{
+    <div class="alert alert-success py-2 small" role="status">
+        @(SavedQuery == "draft" ? "Draft saved" : "Expense submitted")@(Network.IsOnline ? "." : " — it will sync when you're back online.")
+    </div>
+}
+
+@foreach (var p in _pending)
+{
+    var item = _outboxItems.FirstOrDefault(i => i.Id == p.ExpenseOutboxId);
+    var attention = item?.Status == OutboxStatus.NeedsAttention || _outboxItems.Any(i => i.Kind == ExpenseEntryManager.ReceiptKind && i.Status == OutboxStatus.NeedsAttention);
+    <div class="app-card collection-row local @(attention ? "attention" : "")">
+        <div>
+            <strong>@RequestRules.Label(p.Type)</strong>
+            <div class="order-meta">@p.ExpenseDate.ToString("dd MMM") · @p.ReceiptCount receipt(s) · @(p.Submitted ? "to submit" : "draft")</div>
+            @if (attention)
+            {
+                <div class="order-reason">Couldn't be sent — see <a href="sync">Pending sync</a></div>
+            }
+        </div>
+        <div class="text-end">
+            <MoneyText Value="p.Amount" Class="fw-semibold" />
+            <span class="order-status @(attention ? "rejected" : "local")">@(attention ? "Needs attention" : "Waiting to sync")</span>
+        </div>
+    </div>
+}
+
+@if (_server is null && _pending.Count == 0)
+{
+    <EmptyState Title="Expenses not downloaded yet" Message="Connect to the internet to see your expenses." />
+}
+else if ((_server?.Data.Count ?? 0) == 0 && _pending.Count == 0)
+{
+    <EmptyState Title="No expenses yet" Message="Travel, fuel, meals and client entertainment you claim appear here." />
+}
+@foreach (var e in _server?.Data ?? [])
+{
+    var submitting = _pendingSubmits.Contains(e.Id);
+    <div class="app-card collection-row">
+        <div>
+            <strong>@RequestRules.Label(e.Type)</strong>
+            <div class="order-meta">#@e.Id · @e.ExpenseDate.ToString("dd MMM") · @e.Attachments.Count receipt(s)@(e.Description is { } d ? $" · {d}" : "")</div>
+            @if (e.Status == ExpenseStatus.Rejected && e.RejectionReason is { } why)
+            {
+                <div class="order-reason">Rejected: @why</div>
+            }
+            @if (!submitting && e.Status is ExpenseStatus.Draft or ExpenseStatus.Rejected)
+            {
+                <button class="btn btn-sm btn-outline-primary mt-2" @onclick="() => Expenses.SubmitDraftAsync(e.Id, RequestRules.Label(e.Type))">
+                    @(e.Status == ExpenseStatus.Rejected ? "Resubmit" : "Submit")
+                </button>
+            }
+        </div>
+        <div class="text-end">
+            <MoneyText Value="e.Amount" Class="fw-semibold" />
+            <span class="order-status @(submitting ? "local" : StatusClass(e.Status))">@(submitting ? "Submitting…" : e.Status.ToString())</span>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "saved")] public string? SavedQuery { get; set; }
+
+    private Cached<IReadOnlyList<ExpenseDto>>? _server;
+    private IReadOnlyList<PendingExpense> _pending = [];
+    private IReadOnlyList<OutboxItem> _outboxItems = [];
+    private IReadOnlySet<int> _pendingSubmits = new HashSet<int>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Expenses.Changed += OnChanged;
+        Outbox.Changed += OnChanged;
+        _server = await Store.GetExpensesAsync(refresh: false);
+        await LoadLocalAsync();
+        StateHasChanged();
+        if (Network.IsOnline) _server = await Store.GetExpensesAsync(refresh: true);
+    }
+
+    private async Task LoadLocalAsync()
+    {
+        _pending = await Expenses.GetPendingAsync();
+        _outboxItems = await Outbox.GetItemsAsync();
+        _pendingSubmits = await Expenses.GetPendingSubmitsAsync();
+    }
+
+    private static string StatusClass(ExpenseStatus s) => s switch
+    {
+        ExpenseStatus.Draft => "draft",
+        ExpenseStatus.Submitted => "submitted",
+        ExpenseStatus.Approved => "approved",
+        ExpenseStatus.Reimbursed => "delivered",
+        _ => "rejected"
+    };
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        var had = _pending.Count + _pendingSubmits.Count;
+        await LoadLocalAsync();
+        if (_pending.Count + _pendingSubmits.Count < had && Network.IsOnline) _server = await Store.GetExpensesAsync(refresh: true);
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Expenses.Changed -= OnChanged;
+        Outbox.Changed -= OnChanged;
+    }
+}

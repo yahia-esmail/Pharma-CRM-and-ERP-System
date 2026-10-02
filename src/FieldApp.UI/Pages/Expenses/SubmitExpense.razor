@@ -1,0 +1,98 @@
+@page "/expenses/new"
+@using PharmaERP.Domain.Enums
+@inject ExpenseEntryManager Expenses
+@inject SessionState Session
+@inject TimeProvider Time
+@inject NavigationManager Navigation
+
+<PageTitle>Submit expense · Field CRM</PageTitle>
+
+@*
+  Submit Expense (wireframe 12): type, amount, date, description and a photo of the receipt. Save draft keeps it
+  on the server without sending it for approval; Submit sends it. Both work offline.
+*@
+<a class="back-link" href="expenses">‹ My Expenses</a>
+<h1 class="page-title mt-2">Submit expense</h1>
+
+<section class="app-card">
+    <div class="form-label fw-semibold">Type</div>
+    <div class="filter-chips expense-types mb-0" role="radiogroup" aria-label="Expense type">
+        @foreach (var type in Enum.GetValues<ExpenseType>())
+        {
+            <button type="button" role="radio" aria-checked="@(_draft.Type == type ? "true" : "false")"
+                    class="chip @(_draft.Type == type ? "active" : "")" @onclick="() => _draft.Type = type">@RequestRules.Label(type)</button>
+        }
+    </div>
+
+    <div class="expense-grid mt-3">
+        <label>
+            <span class="form-label fw-semibold">Amount (EGP)</span>
+            <input class="form-control" type="number" inputmode="decimal" min="0" step="0.01" aria-label="Amount"
+                   value="@(_draft.Amount > 0 ? _draft.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
+                   @onchange="e => _draft.Amount = decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var a) ? Math.Round(Math.Max(0, a), 2) : 0" />
+        </label>
+        <label>
+            <span class="form-label fw-semibold">Date</span>
+            <input class="form-control" type="date" max="@Today.ToString("yyyy-MM-dd")" aria-label="Expense date"
+                   value="@_draft.ExpenseDate.ToString("yyyy-MM-dd")"
+                   @onchange="e => _draft.ExpenseDate = DateOnly.TryParse(e.Value?.ToString(), out var d) ? d : _draft.ExpenseDate" />
+        </label>
+    </div>
+
+    <div class="small text-secondary mt-2">Territory: @(Session.Profile?.TerritoryName ?? "—")</div>
+
+    <label class="form-label fw-semibold mt-3" for="description">
+        @(_draft.Type == ExpenseType.ClientEntertainment ? "Who, and why" : "Description")
+    </label>
+    <textarea id="description" class="form-control" rows="2" maxlength="500" @bind="_draft.Description" @bind:event="oninput"
+              placeholder="@(_draft.Type == ExpenseType.ClientEntertainment ? "e.g. Lunch with Dr. Karim — new dose launch" : "")"></textarea>
+</section>
+
+<section class="app-card">
+    <h2 class="card-heading">Receipt</h2>
+    <PhotoPicker Slots="ReceiptSlots" Photos="_draft.Receipts" PhotosChanged="StateHasChanged" />
+</section>
+
+@if (_problems.Count > 0)
+{
+    <div class="alert alert-danger py-2 small">@_problems[0]</div>
+}
+<button class="btn btn-primary w-100" @onclick="() => SendAsync(submit: true)" disabled="@_busy">Submit for approval</button>
+<button class="btn btn-outline-primary w-100 mt-2 mb-3" @onclick="() => SendAsync(submit: false)" disabled="@_busy">Save draft</button>
+
+@code {
+    private static readonly IReadOnlyList<string> ReceiptSlots = ["Receipt", "Receipt (page 2)"];
+
+    private readonly ExpenseDraft _draft = new();
+    private IReadOnlyList<string> _problems = [];
+    private bool _busy;
+
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _draft.ExpenseDate = Today;
+        var profile = await Session.EnsureLoadedAsync();
+        _draft.TerritoryId = profile?.TerritoryId ?? 0;
+    }
+
+    private async Task SendAsync(bool submit)
+    {
+        _problems = RequestRules.Validate(_draft, Today);
+        if (_problems.Count > 0) return;
+        _busy = true;
+        try
+        {
+            await Expenses.SendAsync(_draft, submit, Today);
+            Navigation.NavigateTo($"expenses?saved={(submit ? "submitted" : "draft")}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _problems = [ex.Message];
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

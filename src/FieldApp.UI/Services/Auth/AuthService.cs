@@ -23,7 +23,9 @@ public sealed class AuthService(
     TodayPlanState plan,
     VisitSessionManager visits,
     OrderEntryManager orders,
-    CollectionEntryManager collections)
+    CollectionEntryManager collections,
+    Requests.ReturnEntryManager returns,
+    Requests.ExpenseEntryManager expenses)
 {
     public async Task<LoginOutcome> LoginAsync(string email, string password, CancellationToken ct = default)
     {
@@ -68,6 +70,8 @@ public sealed class AuthService(
         visits.Reset();
         orders.Reset();
         collections.Reset();
+        returns.Reset();
+        expenses.Reset();
         await storage.ClearAsync();
         await tokens.ClearAsync();
         outbox.NotifyChanged();

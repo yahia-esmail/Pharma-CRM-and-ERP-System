@@ -38,6 +38,9 @@ public class ReturnService(IAppDbContext db, ICustodyService custodyService) : I
 
         var productExists = await db.Products.AnyAsync(p => p.Id == request.ProductId && !p.IsDeleted, ct);
         if (!productExists) throw new NotFoundException(nameof(Product), request.ProductId);
+        if (request.ProductBatchId is { } batchId
+            && !await db.ProductBatches.AnyAsync(b => b.Id == batchId && b.ProductId == request.ProductId && !b.IsDeleted, ct))
+            throw new ValidationFailedException("That batch isn't a batch of the selected product.");
 
         if (request.FlowType == ReturnFlowType.CustomerToRepresentative)
         {

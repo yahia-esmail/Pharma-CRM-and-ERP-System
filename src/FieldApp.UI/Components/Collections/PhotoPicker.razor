@@ -1,6 +1,6 @@
-@* Proof-of-payment photos (wireframe 10). Opens the rear camera on phones (capture="environment"); each photo is
-   downscaled to a JPEG of at most 1600 px on the phone before it is stored or sent, so a 4 MB camera shot ends up
-   a few hundred KB. *@
+@* Receipt / proof-of-payment photos (wireframes 10–12). Opens the rear camera on phones (capture="environment");
+   each photo is re-encoded as JPEG on the phone — 1600 px, smaller if needed — so a 4 MB camera shot is stored and
+   sent as a few hundred KB. *@
 <div class="photo-picker">
     @foreach (var slot in Slots)
     {
@@ -29,7 +29,10 @@
 </div>
 
 @code {
-    private const int MaxSide = 1600;
+    // Largest side first; a photo still over the budget is re-encoded smaller (plan phase 9: a 4 MB camera shot
+    // must end up under 400 KB and stay readable).
+    private static readonly int[] Sides = [1600, 1280, 1024, 800];
+    private const long TargetBytes = 380 * 1024;
     private const long MaxCameraFileBytes = 25 * 1024 * 1024;
 
     [Parameter, EditorRequired] public IReadOnlyList<string> Slots { get; set; } = [];
@@ -45,12 +48,18 @@
         _busy = slot;
         try
         {
-            var resized = await e.File.RequestImageFileAsync("image/jpeg", MaxSide, MaxSide);
-            await using var stream = resized.OpenReadStream(MaxCameraFileBytes);
-            using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer);
+            byte[] bytes = [];
+            foreach (var side in Sides)
+            {
+                var resized = await e.File.RequestImageFileAsync("image/jpeg", side, side);
+                await using var stream = resized.OpenReadStream(MaxCameraFileBytes);
+                using var buffer = new MemoryStream();
+                await stream.CopyToAsync(buffer);
+                bytes = buffer.ToArray();
+                if (bytes.Length <= TargetBytes) break;
+            }
             Photos.RemoveAll(p => p.Label == slot);
-            Photos.Add(new CollectionPhoto(slot, $"{slot}.jpg", "image/jpeg", Convert.ToBase64String(buffer.ToArray())));
+            Photos.Add(new CollectionPhoto(slot, $"{slot}.jpg", "image/jpeg", Convert.ToBase64String(bytes)));
             await PhotosChanged.InvokeAsync();
         }
         catch (Exception ex)

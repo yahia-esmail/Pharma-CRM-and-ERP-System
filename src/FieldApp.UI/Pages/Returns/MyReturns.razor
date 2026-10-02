@@ -1,0 +1,107 @@
+@page "/returns"
+@using PharmaERP.Application.Returns
+@using PharmaERP.Domain.Enums
+@implements IDisposable
+@inject RequestsStore Store
+@inject ReturnEntryManager Returns
+@inject Outbox Outbox
+@inject INetworkStatus Network
+
+<PageTitle>My Returns · Field CRM</PageTitle>
+
+@* The rep's return requests and where each one stands (wireframe 11, "My Returns"). *@
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title mb-0">My Returns</h1>
+        @if (_server is { } s)
+        {
+            <div class="small text-secondary">as of @s.SavedAtUtc.ToLocalTime().ToString("HH:mm")</div>
+        }
+    </div>
+    <a class="btn btn-primary btn-sm" href="returns/new">+ Return</a>
+</div>
+
+@if (Saved)
+{
+    <div class="alert alert-success py-2 small" role="status">Return submitted@(Network.IsOnline ? " — waiting for approval." : " — it will sync when you're back online.")</div>
+}
+
+@foreach (var p in _pending)
+{
+    var item = _outboxItems.FirstOrDefault(i => i.Id == p.OutboxId);
+    var attention = item?.Status == OutboxStatus.NeedsAttention;
+    <div class="app-card collection-row local @(attention ? "attention" : "")">
+        <div>
+            <strong>@p.ProductName × @p.Quantity</strong>
+            <div class="order-meta">@RequestRules.Label(p.Flow) · @p.CounterpartName · @p.Reason</div>
+            @if (attention && item?.LastError is { } error)
+            {
+                <div class="order-reason">@error — see <a href="sync">Pending sync</a></div>
+            }
+        </div>
+        <span class="order-status @(attention ? "rejected" : "local")">@(attention ? "Needs attention" : "Waiting to sync")</span>
+    </div>
+}
+
+@if (_server is null && _pending.Count == 0)
+{
+    <EmptyState Title="Returns not downloaded yet" Message="Connect to the internet to see your return requests." />
+}
+else if ((_server?.Data.Count ?? 0) == 0 && _pending.Count == 0)
+{
+    <EmptyState Title="No returns yet" Message="Damaged, expired or unsold stock you take back or hand in appears here." />
+}
+@foreach (var r in _server?.Data ?? [])
+{
+    <div class="app-card collection-row">
+        <div>
+            <strong>@r.ProductName × @r.Quantity</strong>
+            <div class="order-meta">@RequestRules.Label(r.FlowType) · @(r.PharmacyName ?? r.WarehouseName)@(r.BatchNumber is { } b ? $" · {b}" : "") · @r.Reason · @r.RequestedAtUtc.ToLocalTime().ToString("dd MMM")</div>
+            @if (r.Status == ReturnStatus.Rejected && r.RejectionReason is { } why)
+            {
+                <div class="order-reason">Rejected: @why</div>
+            }
+        </div>
+        <span class="order-status @(r.Status switch { ReturnStatus.Approved => "approved", ReturnStatus.Rejected => "rejected", _ => "submitted" })">@r.Status</span>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "saved")] public string? SavedQuery { get; set; }
+
+    private Cached<IReadOnlyList<ReturnTransactionDto>>? _server;
+    private IReadOnlyList<PendingReturn> _pending = [];
+    private IReadOnlyList<OutboxItem> _outboxItems = [];
+
+    private bool Saved => SavedQuery == "1";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Returns.Changed += OnChanged;
+        Outbox.Changed += OnChanged;
+        _server = await Store.GetReturnsAsync(refresh: false);
+        await LoadLocalAsync();
+        StateHasChanged();
+        if (Network.IsOnline) _server = await Store.GetReturnsAsync(refresh: true);
+    }
+
+    private async Task LoadLocalAsync()
+    {
+        _pending = await Returns.GetPendingAsync();
+        _outboxItems = await Outbox.GetItemsAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        var had = _pending.Count;
+        await LoadLocalAsync();
+        if (_pending.Count < had && Network.IsOnline) _server = await Store.GetReturnsAsync(refresh: true);
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Returns.Changed -= OnChanged;
+        Outbox.Changed -= OnChanged;
+    }
+}

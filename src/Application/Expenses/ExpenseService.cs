@@ -10,7 +10,7 @@ using PharmaERP.Shared.Security;
 
 namespace PharmaERP.Application.Expenses;
 
-public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachments,
+public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachments, IBusinessCalendar calendar,
     INotificationService notificationService, IUserDirectoryService userDirectory) : IExpenseService
 {
     public async Task<PagedResult<ExpenseDto>> GetMineAsync(string userId, ExpenseStatus? status, PagedRequest request,
@@ -48,8 +48,17 @@ public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachm
         if (request.Amount <= 0)
             throw new ValidationFailedException("Amount must be greater than zero.");
 
+        if (!Enum.IsDefined(request.Type))
+            throw new ValidationFailedException("Unknown expense type.");
+        if (request.ExpenseDate > calendar.Today)
+            throw new ValidationFailedException("The expense date can't be in the future.");
+
         var territoryExists = await db.Territories.AnyAsync(t => t.Id == request.TerritoryId && !t.IsDeleted, ct);
         if (!territoryExists) throw new NotFoundException(nameof(Territory), request.TerritoryId);
+
+        // Check the receipts first: the expense must never be saved and then fail on its attachments — the
+        // outbox would resend it and create a second one.
+        await fileAttachments.EnsureLinkableAsync("Expense", request.AttachmentIds, userId, ct);
 
         var expense = new Expense
         {
@@ -57,13 +66,14 @@ public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachm
             Amount = request.Amount,
             ExpenseDate = request.ExpenseDate,
             TerritoryId = request.TerritoryId,
-            Description = request.Description,
-            Status = ExpenseStatus.Draft
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            Status = request.Submit ? ExpenseStatus.Submitted : ExpenseStatus.Draft
         };
         db.Expenses.Add(expense);
         await db.SaveChangesAsync(ct);
 
         await fileAttachments.LinkAsync("Expense", expense.Id, request.AttachmentIds, userId, ct);
+        if (request.Submit) await NotifyAwaitingApprovalAsync(expense, ct);
 
         return expense.Id;
     }
@@ -78,7 +88,11 @@ public class ExpenseService(IAppDbContext db, IFileAttachmentService fileAttachm
         expense.Status = ExpenseStatus.Submitted;
         expense.RejectionReason = null;
         await db.SaveChangesAsync(ct);
+        await NotifyAwaitingApprovalAsync(expense, ct);
+    }
 
+    private async Task NotifyAwaitingApprovalAsync(Expense expense, CancellationToken ct)
+    {
         var recipientUserIds = new HashSet<string>();
         recipientUserIds.UnionWith(await userDirectory.GetUserIdsInRoleAsync(Roles.Management, ct));
         recipientUserIds.UnionWith(await userDirectory.GetUserIdsInRoleAsync(Roles.SalesManager, ct));

@@ -35,7 +35,8 @@ public sealed class OutboxItem
     public string? JsonBody { get; init; }
 
     /// <summary>A file sent as multipart/form-data (field "file") instead of a JSON body — e.g. a proof-of-payment
-    /// photo. The bytes are stored on the phone next to the item until it is delivered or discarded.</summary>
+    /// photo. The bytes are stored on the phone next to the item until it is delivered or discarded. With a file,
+    /// <see cref="JsonBody"/> (if any) is a flat object whose properties are sent as extra form fields.</summary>
     public string? FileKey { get; init; }
 
     public Guid? DependsOn { get; init; }

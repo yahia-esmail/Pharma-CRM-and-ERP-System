@@ -115,7 +115,11 @@ public sealed partial class OutboxProcessor(
                 return await RejectAsync(item, null, "The photo is no longer on this phone, so it can't be uploaded.");
             var part = new ByteArrayContent(Convert.FromBase64String(file.Base64));
             part.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            request.Content = new MultipartFormDataContent { { part, "file", file.FileName } };
+            var form = new MultipartFormDataContent { { part, "file", file.FileName } };
+            if (body is not null)
+                foreach (var field in JsonDocument.Parse(body.Value).RootElement.EnumerateObject())
+                    form.Add(new StringContent(field.Value.ValueKind == JsonValueKind.String ? field.Value.GetString()! : field.Value.GetRawText()), field.Name);
+            request.Content = form;
         }
         else if (body is not null)
             request.Content = new StringContent(body.Value, Encoding.UTF8, "application/json");

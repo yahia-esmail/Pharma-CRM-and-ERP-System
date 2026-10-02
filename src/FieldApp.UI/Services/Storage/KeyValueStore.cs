@@ -93,4 +93,10 @@ public static class StorageKeys
     public const string FinancialCustody = "cache:financialCustody";
     public static string CustodyLedger(int productId) => $"cache:custodyLedger:{productId}";
     public const string PendingCollections = "collections:pending";
+
+    public const string Returns = "cache:returns";
+    public const string Expenses = "cache:expenses";
+    public const string Warehouses = "cache:warehouses";
+    public const string PendingReturns = "returns:pending";
+    public const string PendingExpenses = "expenses:pending";
 }

@@ -45,16 +45,29 @@ public class FileAttachmentService(IAppDbContext db, IFileStorageService fileSto
         return ToDto(attachment);
     }
 
+    public async Task EnsureLinkableAsync(string entityType, IReadOnlyList<int> attachmentIds, string requestingUserId,
+        CancellationToken ct = default) =>
+        await LoadLinkableAsync(entityType, attachmentIds, requestingUserId, ct);
+
     public async Task LinkAsync(string entityType, int entityId, IReadOnlyList<int> attachmentIds,
         string requestingUserId, CancellationToken ct = default)
     {
         if (attachmentIds.Count == 0) return;
+        foreach (var attachment in await LoadLinkableAsync(entityType, attachmentIds, requestingUserId, ct))
+            attachment.EntityId = entityId;
+        await db.SaveChangesAsync(ct);
+    }
 
+    private async Task<List<FileAttachment>> LoadLinkableAsync(string entityType, IReadOnlyList<int> attachmentIds,
+        string requestingUserId, CancellationToken ct)
+    {
+        if (attachmentIds.Count == 0) return [];
+        var distinct = attachmentIds.Distinct().ToList();
         var attachments = await db.FileAttachments
-            .Where(a => attachmentIds.Contains(a.Id) && !a.IsDeleted)
+            .Where(a => distinct.Contains(a.Id) && !a.IsDeleted)
             .ToListAsync(ct);
 
-        if (attachments.Count != attachmentIds.Count)
+        if (attachments.Count != distinct.Count)
             throw new ValidationFailedException("One or more attachments could not be found.");
 
         foreach (var attachment in attachments)
@@ -65,11 +78,8 @@ public class FileAttachmentService(IAppDbContext db, IFileStorageService fileSto
                 throw new ValidationFailedException($"Attachment {attachment.Id} is already linked to another record.");
             if (attachment.UploadedByUserId != requestingUserId)
                 throw new ValidationFailedException($"Attachment {attachment.Id} was not uploaded by you.");
-
-            attachment.EntityId = entityId;
         }
-
-        await db.SaveChangesAsync(ct);
+        return attachments;
     }
 
     public async Task<IReadOnlyList<FileAttachmentDto>> GetForEntityAsync(string entityType, int entityId,
